@@ -295,6 +295,36 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
 .inspect .d-head{justify-self:stretch}
 .inspect .facts{grid-template-columns:repeat(2,minmax(0,1fr))}
 
+/* Coach, away card, save, achievements, daily */
+.coach{position:absolute;left:50%;transform:translateX(-50%);width:min(440px,calc(100% - 32px));z-index:6;bottom:220px;
+  display:grid;gap:8px;padding:10px 12px;background:var(--gold);color:var(--gold-ink);border:3px solid var(--gold-ink);box-shadow:0 4px 0 var(--edge);font:21px/1.15 var(--term)}
+.coach::after{content:"";position:absolute;left:50%;bottom:-12px;margin-left:-9px;border:9px solid transparent;border-bottom:0;border-top:12px solid var(--gold-ink)}
+.coach p{margin:0}
+.coach-btns{display:flex;justify-content:flex-end;gap:8px}
+.coach .pbtn{font-size:8px;padding:8px}
+.away-main{display:grid;gap:4px;width:100%;padding:12px;background:var(--panel-lo);border:3px solid var(--edge)}
+.away-big{font:18px/1.2 var(--pixel);color:var(--gold)}
+.away-main .t{font:20px/1.15 var(--term)}
+.field.code{font:15px/1.2 var(--term);resize:vertical;word-break:break-all;min-height:70px}
+.flycoin{position:fixed;z-index:40;transition:transform .7s cubic-bezier(.5,-.4,.7,1),opacity .7s;pointer-events:none}
+.daily{display:grid;gap:6px;padding:10px 12px;background:#1D3866;border:3px solid var(--gold)}
+.daily .t{font:20px/1.15 var(--term)}
+.daily .r{display:flex;justify-content:space-between;gap:10px;font:18px/1 var(--term);color:var(--muted)}
+.daily .r b{font-weight:400;color:var(--gold)}
+.daily.done{border-color:var(--sonar-dim)}
+.ach{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.ach li{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;background:var(--panel-lo);border:3px solid var(--edge)}
+.ach li canvas{width:32px;height:32px}
+.ach li.locked canvas{filter:grayscale(1) brightness(.5)}
+.ach .nm{font:10px/1.4 var(--pixel)}
+.ach .ds{font:18px/1.1 var(--term);color:var(--muted)}
+.ach .bar{display:block;height:8px;margin-top:5px;background:repeating-linear-gradient(90deg,#23406E 0 6px,transparent 6px 8px)}
+.ach .bar i{display:block;height:100%;background:repeating-linear-gradient(90deg,var(--gold) 0 6px,transparent 6px 8px)}
+.ach .rw{font:20px/1 var(--term);color:var(--gold);white-space:nowrap}
+.ach li.got{border-color:var(--sonar-dim)}
+.ach li.got .rw{color:var(--sonar)}
+.journal-fact{margin:0;padding:10px 12px;background:var(--panel-lo);border:3px dashed #23406E;font:20px/1.2 var(--term);text-align:left;width:100%}
+
 /* Trophy room */
 .best{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:10px;background:var(--panel-lo);border:3px solid var(--edge)}
 .best .stand{width:auto;padding:8px}
@@ -340,6 +370,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
         <h1 class="logo">BELOW <b>ZERO</b></h1>
         <div class="chip money" id="coinChip" title="Coins"><span class="coin" aria-hidden="true"></span><span id="coinTxt">0</span></div>
         <div class="chip" id="bestChip"><span class="k">BEST</span><span id="bestTxt">NONE YET</span></div>
+        <div class="chip" id="todChip"><span class="k">NOW</span><span id="todTxt">DAY</span></div>
       </div>
       <div class="hud-btns"><button class="pbtn big" id="alertBtn" type="button" hidden title="Show a small window or pop-up when a fish bites">FISH ALERT</button><button class="pbtn big" id="openMenu" type="button">MENU<span class="badge" id="menuBadge" hidden></span></button></div>
     </header>
@@ -374,12 +405,14 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
   </div>
 
   <div class="toast" id="toast" role="status" hidden></div>
+  <div class="coach" id="coach" role="status" hidden><p id="coachTxt"></p><div class="coach-btns"><button class="pbtn" id="coachSkip" type="button">SKIP TUTORIAL</button><button class="pbtn" id="coachOk" type="button" hidden>GOT IT</button></div></div>
 
   <!-- MENU -->
   <div class="overlay" id="menuOv" hidden>
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
       <div class="d-head"><h2 class="d-title" id="menuTitle">MENU</h2><button class="x" type="button" data-close aria-label="Close">X</button></div>
       <div class="wallet"><span class="lbl">YOUR COINS</span><span class="v"><span class="coin"></span><span id="menuCoins">0</span></span></div>
+      <div class="daily" id="dailyBox"></div>
       <div class="menu-list" id="menuList"></div>
     </div>
   </div>
@@ -458,6 +491,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="tackleTitle">
       <div class="d-head"><h2 class="d-title" id="tackleTitle">TACKLE BOX</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
       <p class="note" id="tackleNote" hidden style="color:var(--red-hi)">Reel in your line first to change your spot or bait.</p>
+      <p class="note" id="todNote" style="color:var(--gold)"></p>
       <div><div class="lbl-row"><span class="lbl">SPOT</span><span class="desc" id="spotDesc"></span></div><div class="seg" id="spots"></div></div>
       <div><div class="lbl-row"><span class="lbl">BAIT</span><span class="desc" id="baitDesc"></span></div><div class="baits" id="baits"></div></div>
       <label class="toggle" id="practiceRow" for="practice"><input type="checkbox" id="practice"><span class="box"></span><span>Fast time (practice, can't sell)</span></label>
@@ -482,27 +516,76 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
   <div class="overlay" id="boardOv" hidden>
     <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="boardTitle">
       <div class="d-head"><h2 class="d-title" id="boardTitle">WORLD LEADERBOARD</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <div class="seg" id="lbPeriods" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button type="button" data-period="all" aria-pressed="true">ALL TIME</button><button type="button" data-period="week" aria-pressed="false">THIS WEEK</button></div>
       <div class="lb-tools">
         <label class="lbl" for="lbSpecies">BIGGEST FISH</label>
         <select id="lbSpecies"></select>
       </div>
       <ul class="lb" id="lbList"></ul>
       <div class="me-line"><span class="v" id="lbMe"></span><button class="pbtn" type="button" id="lbRename">CHANGE NAME</button></div>
-      <p class="note" id="lbNote">Your biggest fish of each kind is on the board while you keep it. Sell it and it comes off. Practice fish never count.</p>
+      <p class="note" id="lbNote">Your biggest fish of each kind is on the board while you keep it. Sell it and it comes off. The weekly board only counts fish caught since Monday, and it starts fresh every week. Practice fish never count.</p>
+    </div>
+  </div>
+
+  <!-- SAVE CODE -->
+  <div class="overlay" id="saveOv" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="saveTitle">
+      <div class="d-head"><h2 class="d-title" id="saveTitle">SAVE CODE</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <p class="note" style="color:var(--ice)">Move your game to another device, like from your school Chromebook to your computer at home. Copy the code here, then paste it on the other device.</p>
+      <label class="lbl" for="saveOut">1. COPY YOUR SAVE CODE</label>
+      <textarea class="field code" id="saveOut" readonly rows="4"></textarea>
+      <button class="pbtn gold" id="saveCopy" type="button">COPY CODE</button>
+      <p class="note">Keep it private. Anyone with this code can play as you on the leaderboard.</p>
+      <label class="lbl" for="saveIn">2. LOAD A CODE FROM ANOTHER DEVICE</label>
+      <textarea class="field code" id="saveIn" rows="3" placeholder="Paste a save code here"></textarea>
+      <p class="err" id="saveErr" aria-live="polite"></p>
+      <button class="pbtn" id="saveLoad" type="button">LOAD THIS SAVE</button>
+    </div>
+  </div>
+
+  <!-- ACHIEVEMENTS -->
+  <div class="overlay" id="achOv" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="achTitle">
+      <div class="d-head"><h2 class="d-title" id="achTitle">ACHIEVEMENTS</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <p class="note" id="achSum"></p>
+      <ul class="ach" id="achList"></ul>
+    </div>
+  </div>
+
+  <!-- JOURNAL ENTRY -->
+  <div class="overlay" id="journalOv" hidden>
+    <div class="dialog inspect" role="dialog" aria-modal="true" aria-labelledby="jName">
+      <div class="d-head"><button class="pbtn" type="button" id="jBack">&lt; JOURNAL</button><button class="x" type="button" data-close aria-label="Close">X</button></div>
+      <div class="stand" id="jPic"></div>
+      <h2 class="c-name" id="jName"></h2>
+      <div class="c-len" id="jRec"></div>
+      <p class="journal-fact" id="jFact"></p>
+      <div class="facts" id="jFacts"></div>
+    </div>
+  </div>
+
+  <!-- WELCOME BACK -->
+  <div class="overlay" id="awayOv" hidden>
+    <div class="dialog cf" role="dialog" aria-modal="true" aria-labelledby="awayTitle">
+      <h2 class="d-title" id="awayTitle">WELCOME BACK</h2>
+      <p class="note" id="awayTime"></p>
+      <div class="away-main" id="awayMain"></div>
+      <ul class="help" id="awayList" style="text-align:left;width:100%"></ul>
+      <button class="go" id="awayOk" type="button">LET'S FISH</button>
     </div>
   </div>
 
   <!-- TROPHIES -->
   <div class="overlay" id="trophyOv" hidden>
     <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="trophyTitle">
-      <div class="d-head"><h2 class="d-title" id="trophyTitle">TROPHY ROOM</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <div class="d-head"><h2 class="d-title" id="trophyTitle">FISH JOURNAL</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
       <div id="bestBox"></div>
       <div class="stats" id="stats"></div>
-      <div class="lbl">SPECIES</div>
+      <div class="lbl">SPECIES (TAP ONE TO READ ABOUT IT)</div>
       <div class="grid" id="grid"></div>
       <div class="lbl">RECENT CATCHES</div>
       <ul class="recent" id="recent"></ul>
-      <p class="note">Your progress is saved in this browser only. A different device or a cleared browser starts over.</p>
+      <p class="note">Your progress is saved in this browser only. Use MENU, then SAVE CODE, to move it to another device or keep a backup.</p>
       <div class="reset-row">
         <button class="pbtn" id="reset" type="button">RESET GAME</button>
         <span id="resetAsk" class="reset-row" hidden><span class="note" style="color:var(--ice)">Erase coins, gear and catches?</span><button class="pbtn danger" id="resetYes" type="button">ERASE</button><button class="pbtn" id="resetNo" type="button">KEEP</button></span>
@@ -522,8 +605,10 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
         <li>Spend coins in the <span style="color:var(--gold)">Bait Shop</span>. Better bait brings bigger fish that pay more, but you have to wait longer.</li>
         <li>The <span style="color:var(--gold)">size limit</span> goes up until a fish bites. The clock keeps running even with this page closed.</li>
         <li>Weedline opens after 1 hour of total fishing. The Deep Hole opens after 8 hours.</li>
+        <li>Check MENU every day for a <span style="color:var(--gold)">daily challenge</span>, and earn coins from <span style="color:var(--gold)">achievements</span>.</li>
         <li>Spend leftover coins in the <span style="color:var(--gold)">Clothes Shop</span> to dress up your angler.</li>
         <li>Bigger bait gets fewer bites, but a fish that bites late in a long wait can be huge.</li>
+        <li><span style="color:var(--gold)">Time of day matters.</span> Panfish and pike like daytime. Walleye, catfish and flatheads come out at night. Dawn and dusk are prime time, when trophy fish are twice as likely. Check the NOW sign at the top.</li>
         <li>Each cast's luck is decided when you cast, so refreshing won't get you a better fish.</li>
       </ul>
       <p class="note">FISH ALERT (computer only): in Chrome or Edge it opens a tiny window that floats on top of your other apps and flashes when something bites. In other browsers it sends a silent pop-up notification instead. It only works on the game's own website, not inside Claude.</p>
@@ -572,18 +657,31 @@ function mulberry32(a){
     return ((t^t>>>14)>>>0)/4294967296;
   };
 }
-function speciesWeights(spot,bait,minutes){
+/* Which part of the day it is, and how much each fish likes it. Dawn and dusk are prime time for trophies. */
+var ACT={
+ bluegill:{dawn:1.2,day:1.5,dusk:1,night:0.3}, perch:{dawn:1.5,day:1.3,dusk:1,night:0.3},
+ crappie:{dawn:2,day:0.6,dusk:2.2,night:1}, largemouth:{dawn:2,day:0.8,dusk:2,night:0.6},
+ smallmouth:{dawn:1.2,day:1.5,dusk:1,night:0.4}, walleye:{dawn:1.5,day:0.4,dusk:2.5,night:2.5},
+ channel:{dawn:0.8,day:0.5,dusk:1.5,night:2.5}, pike:{dawn:1.2,day:1.8,dusk:0.8,night:0.3},
+ laketrout:{dawn:1.8,day:1.3,dusk:0.8,night:0.5}, muskie:{dawn:1.5,day:1,dusk:2,night:0.6},
+ flathead:{dawn:0.6,day:0.2,dusk:1.2,night:3}, sturgeon:{dawn:1.5,day:0.6,dusk:1,night:2}
+};
+var PERIOD_NAME={dawn:'Dawn',day:'Day',dusk:'Dusk',night:'Night'};
+function periodOf(h){ if(h==null) return null; h=((h%24)+24)%24; return h>=5&&h<8?'dawn':h>=8&&h<17?'day':h>=17&&h<20?'dusk':'night'; }
+function speciesWeights(spot,bait,minutes,hour){
+  var per=periodOf(hour);
   return SPECIES.map(function(sp){
     var w=(sp.spots[spot]||0)*(sp.baits[bait]||0);
     if(minutes<sp.minWait) w=0;
     else if(sp.maxWait && minutes>sp.maxWait) w*=Math.exp(-(minutes-sp.maxWait)/sp.maxWait);
+    if(per&&ACT[sp.id]) w*=ACT[sp.id][per];
     return {sp:sp,w:w};
   });
 }
 function sizeCap(minutes,bait){ var b=BAIT_BY_ID[bait]; return (0.12+0.88*(1-Math.exp(-minutes/b.tau)))*b.capMax; }
-function rollCatch(seed,spot,bait,minutes){
+function rollCatch(seed,spot,bait,minutes,hour){
   var rnd=mulberry32(seed>>>0);
-  var list=speciesWeights(spot,bait,minutes);
+  var list=speciesWeights(spot,bait,minutes,hour);
   var total=0; list.forEach(function(x){total+=x.w;});
   if(total<=0) return null;
   var pick=rnd()*total, chosen=null;
@@ -594,7 +692,8 @@ function rollCatch(seed,spot,bait,minutes){
   var sp=chosen.sp;
   var A=1-Math.exp(-minutes/BAIT_BY_ID[bait].tau);
   var cap=(0.12+0.88*A)*BAIT_BY_ID[bait].capMax;
-  var u=rnd(), bonus=rnd()<0.03+0.12*A, v=rnd();
+  var per=periodOf(hour), prime=per==='dawn'||per==='dusk';
+  var u=rnd(), bonus=rnd()<(0.03+0.12*A)*(prime?2:1), v=rnd();
   var f=bonus ? cap*(0.75+0.25*v) : cap*Math.pow(u,1.25);
   var lb=Math.round((sp.min+(sp.max-sp.min)*f)*16)/16;
   var inches=Math.round(sp.k*Math.cbrt(lb)*4)/4;
@@ -676,9 +775,14 @@ var SAVE_KEY='slowbite.v1', PRACTICE_SPEED=600;
 var storageOK=true, state=null, armedUntil=0, toastTimer=0;
 function $(id){return document.getElementById(id);}
 function freshState(){ return {v:1,spot:'shallows',bait:'worm',practice:false,line:null,fishedSec:0,total:0,records:{},catches:[],last:null,
-  coins:0,earned:0,ownedBaits:['worm'],bucket:[],uid:0,outfit:Object.assign({},DEFAULT_OUTFIT),ownedItems:ITEMS.filter(function(i){return i.price===0;}).map(function(i){return i.id;})}; }
+  coins:0,earned:0,ownedBaits:['worm'],bucket:[],uid:0,tut:0,counts:{},flags:{},spent:0,dailyDone:0,ach:[],daily:null,lastSeen:0,outfit:Object.assign({},DEFAULT_OUTFIT),ownedItems:ITEMS.filter(function(i){return i.price===0;}).map(function(i){return i.id;})}; }
 function upgrade(d){
   var s=Object.assign(freshState(),d);
+  if(d.tut==null) s.tut=(d.total>0)?99:0;
+  if(!d.counts){ s.counts={}; (d.catches||[]).forEach(function(c){ if(!c.practice) s.counts[c.sp]=(s.counts[c.sp]||0)+1; });
+    Object.keys(s.records||{}).forEach(function(k){ if(!s.counts[k]) s.counts[k]=1; }); }
+  if(!s.flags||typeof s.flags!=='object') s.flags={};
+  if(!Array.isArray(s.ach)) s.ach=[];
   if(!Array.isArray(s.ownedBaits)||s.ownedBaits.indexOf('worm')<0) s.ownedBaits=['worm'];
   if(!Array.isArray(s.bucket)) s.bucket=[];
   s.outfit=Object.assign({},DEFAULT_OUTFIT,s.outfit||{});
@@ -712,6 +816,14 @@ function toast(msg,ms,good){
   clearTimeout(toastTimer); toastTimer=setTimeout(function(){t.hidden=true;},ms||2600);
 }
 function hash(n){var x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);}
+function nowHour(){ var d=new Date(); return d.getHours()+d.getMinutes()/60; }
+function stormNow(){ return hash(Math.floor(Date.now()/3600000)*1.37+11)<0.12; }
+function activeNow(per,n){ return SPECIES.slice().sort(function(a,b){return ACT[b.id][per]-ACT[a.id][per];}).slice(0,n||3); }
+function todLine(){
+  var per=periodOf(nowHour()), prime=per==='dawn'||per==='dusk';
+  var names=activeNow(per,3).map(function(sp){return sp.name.toLowerCase();});
+  return "It's "+PERIOD_NAME[per].toLowerCase()+(prime?', prime time for big fish':'')+'. Biting best right now: '+names[0]+', '+names[1]+' and '+names[2]+'.';
+}
 function money(n){ return Number(n).toLocaleString('en-US'); }
 function bumpCoins(){ var c=$('coinChip'); c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump'); }
 
@@ -829,6 +941,8 @@ var ICONS={
   hat:{rows:["........","...WW...","..RRRR..",".RRRRRR.",".RRRRRR.",".CCCCCC.","........","........"],map:{W:'#F4F4F4',R:'#D93A3A',C:'#F0E6D2'}},
   tackle:{rows:["..kkkk..","..k..k..","GGGGGGGG","GgYggYgG","GGGGGGGG","GggggggG","GggggggG","GGGGGGGG"],map:{G:'#2F7C9A',g:'#1D5468',Y:'#FFC94A',k:'#5A6476'}},
   medal:{rows:["..rbbr..","...rb...","..YYYY..",".YyYYyY.",".YYYYYY.",".YyYYyY.","..YYYY..","........"],map:{r:'#E5484D',b:'#3FA7F0',Y:'#FFC94A',y:'#C98A12'}},
+  star:{rows:["...Y....","...Y....","YYYYYYY.",".YYYYY..","..YYY...",".YY.YY..","YY...YY.","........"],map:{Y:'#FFC94A'}},
+  disk:{rows:["BBBBBBB.","BwwwwwBB","BwwwwwBB","BBBBBBBB","BBkkkkBB","BBkBkkBB","BBkkkkBB","........"],map:{B:'#3A78D8',w:'#EAF5FF',k:'#14294C'}},
   help:{rows:["..WWWW..",".WW..WW.",".....WW.","....WW..","...WW...","...WW...","........","...WW..."],map:{W:'#EAF5FF'}}
 };
 var HAT_ROWS={
@@ -918,7 +1032,7 @@ function renderPanel(){
 function renderSonar(){
   var line=state.line; if(!line) return;
   var T=effMinutes(line,Date.now()), info=lineInfo(line), on=T>=info.bite, bt=BAIT_BY_ID[line.bait];
-  $('sonarWhere').textContent=(SPOT_BY_ID[line.spot].short+' / '+bt.name.toUpperCase())+(line.speed>1?' / FAST':'');
+  $('sonarWhere').textContent=(SPOT_BY_ID[line.spot].short+' / '+bt.name.toUpperCase())+' / '+PERIOD_NAME[periodOf(nowHour())].toUpperCase()+(line.speed>1?' / FAST':'');
   var cap=Math.round(sizeCap(Math.min(T,info.bite),line.bait)*100);
   $('meterBar').style.setProperty('--w',cap+'%'); $('meterPct').textContent=cap+'%';
   if(on){
@@ -926,7 +1040,7 @@ function renderSonar(){
     $('sonarNext').innerHTML=feel(info.roll.lb)+' REEL IT IN!';
     return;
   }
-  var list=speciesWeights(line.spot,line.bait,T), total=0;
+  var list=speciesWeights(line.spot,line.bait,T,nowHour()), total=0;
   list.forEach(function(x){total+=x.w;});
   var live=list.filter(function(x){return x.w>0;}).sort(function(a,b){return b.w-a.w;}).slice(0,4);
   $('sonarList').innerHTML='<li class="s-msg">BITE RATE: <b style="font-weight:400;color:var(--gold)">'+bt.rate+'</b></li>'+(live.length?live.map(function(x){
@@ -939,15 +1053,27 @@ function renderSonar(){
 }
 var infoCache={}, wasOn=false;
 function lineInfo(line){
-  var k=line.seed+'|'+line.spot+'|'+line.bait;
-  if(!infoCache[k]){ var bt=biteMinutes(line.seed,line.spot,line.bait); infoCache[k]={bite:bt,roll:isFinite(bt)?rollCatch(line.seed,line.spot,line.bait,bt):null}; }
+  var k=line.seed+'|'+line.spot+'|'+line.bait+'|'+line.castAt+'|'+line.speed;
+  if(!infoCache[k]){ var bt=biteMinutes(line.seed,line.spot,line.bait), bh=null;
+    if(isFinite(bt)){ var bd=new Date(line.castAt+bt*60000/line.speed); bh=bd.getHours()+bd.getMinutes()/60; }
+    infoCache[k]={bite:bt,hour:bh,at:line.castAt+bt*60000/line.speed,roll:isFinite(bt)?rollCatch(line.seed,line.spot,line.bait,bt,bh):null}; }
   return infoCache[k];
 }
 function hooked(line,now){ return effMinutes(line,now||Date.now())>=lineInfo(line).bite; }
 function feel(lb){ return lb<1?'FEELS <b>TINY</b>.':lb<5?'A <b>DECENT TUG</b>.':lb<20?'IT IS <b>FIGHTING HARD</b>!':'IT IS <b>MASSIVE</b>!'; }
 var lastSonar=0;
+var lastTod='', lastSeenSave=0;
+function renderTod(){
+  var per=periodOf(nowHour()), prime=per==='dawn'||per==='dusk', storm=stormNow();
+  var key=per+prime+storm; if(key===lastTod) return; lastTod=key;
+  $('todTxt').textContent=PERIOD_NAME[per].toUpperCase()+(prime?' / BIG FISH TIME':'')+(storm?' / SNOWSTORM':'');
+  $('todChip').classList.toggle('money',prime);
+  $('todChip').title=todLine();
+  var tn=$('todNote'); if(tn) tn.textContent=todLine();
+}
 function tick(){
-  checkBiteAlert();
+  checkBiteAlert(); renderTod(); updateCoach();
+  if(!document.hidden){ state.lastSeen=Date.now(); if(Date.now()-lastSeenSave>30000){ lastSeenSave=Date.now(); save(); } }
   var now=Date.now(), line=state.line, center=$('center'), clock=$('clock'), st=$('status'), go=$('go');
   if(fx&&!fx.out){
     center.style.visibility='hidden';
@@ -986,6 +1112,7 @@ function renderAll(){
 /* ================= ACTIONS ================= */
 function cast(){
   if(state.line) return;
+  ensureDaily();
   if(fx){ if(fx.out) fx=null; else return; }
   var seed; try{ seed=crypto.getRandomValues(new Uint32Array(1))[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
   state.line={castAt:Date.now(),seed:seed,spot:state.spot,bait:state.bait,speed:state.practice?PRACTICE_SPEED:1};
@@ -1012,11 +1139,18 @@ function reelIn(){
     SPOTS.forEach(function(s){ if(s.unlockH>0&&beforeH<s.unlockH&&afterH>=s.unlockH) unlocked.push(s.name); });
     entry.uid=++state.uid;
     state.bucket.unshift({uid:entry.uid,sp:r.id,lb:r.lb,inches:r.inches,at:now,spot:line.spot,bait:line.bait,bite:entry.min});
+    state.counts[r.id]=(state.counts[r.id]||0)+1;
+    var hr=new Date(now).getHours();
+    if(info.bite>=360) state.flags.wait6=1;
+    if(realSec>=86400) state.flags.cast24=1;
+    if(hr<5) state.flags.night=1;
+    if(hr>=5&&hr<8) state.flags.dawn=1;
+    dailyEvent('catch',{sp:r.id,lb:r.lb});
   }
   state.catches.unshift(entry); if(state.catches.length>60) state.catches.length=60;
   state.last=Object.assign({newBest:newBest,newSpecies:newSpecies,unlocked:unlocked,seen:false},entry);
   save();
-  if(!practice) lbSync();
+  if(!practice){ lbSync(); setTimeout(checkAch,2600); }
   startFx(state.last,reduceMotion);
   renderAll();
   if(reduceMotion) showCard(); else setTimeout(showCard,CARD_AT);
@@ -1025,7 +1159,7 @@ function sellUids(uids){
   var total=0, keep=[];
   state.bucket.forEach(function(f){ if(uids.indexOf(f.uid)>=0) total+=fishValue(f.sp,f.lb); else keep.push(f); });
   if(!total) return 0;
-  state.bucket=keep; state.coins+=total; state.earned+=total; save(); renderHUD(); bumpCoins(); lbSync();
+  state.bucket=keep; state.coins+=total; state.earned+=total; save(); renderHUD(); bumpCoins(); lbSync(); flyCoins(sellFrom); sellFrom=null; dailyEvent('sell',total);
   return total;
 }
 function showCard(){
@@ -1058,7 +1192,7 @@ function endFx(){
 }
 
 /* ---- menu & screens ---- */
-var OVERLAYS=['menuOv','tackleOv','baitOv','shopOv','bucketOv','fishOv','trophyOv','boardOv','helpOv'];
+var OVERLAYS=['menuOv','tackleOv','baitOv','shopOv','bucketOv','fishOv','trophyOv','journalOv','achOv','boardOv','saveOv','helpOv'];
 function openOv(id){
   OVERLAYS.forEach(function(o){ $(o).hidden=true; });
   if(id==='menuOv') renderMenu();
@@ -1067,6 +1201,9 @@ function openOv(id){
   if(id==='shopOv'){ shopPreview=null; renderShop(); }
   if(id==='bucketOv') renderBucket();
   if(id==='fishOv') renderFish();
+  if(id==='saveOv') renderSave();
+  if(id==='achOv') renderAch();
+  if(id==='journalOv') renderJournal();
   if(id==='trophyOv') renderTrophies();
   if(id==='boardOv') renderBoard();
   renderHUD();
@@ -1074,9 +1211,10 @@ function openOv(id){
   var f=$(id).querySelector('[data-close]'); if(f) f.focus();
 }
 function closeAll(){ OVERLAYS.forEach(function(o){ $(o).hidden=true; }); $('resetAsk').hidden=true; $('reset').hidden=false; renderAll(); }
-function anyOpen(){ return !$('nameOv').hidden||!$('confirmOv').hidden||OVERLAYS.some(function(o){return !$(o).hidden;}); }
+function anyOpen(){ return !$('nameOv').hidden||!$('confirmOv').hidden||!$('awayOv').hidden||OVERLAYS.some(function(o){return !$(o).hidden;}); }
 
 function renderMenu(){
+  ensureDaily(); renderDaily();
   var worth=state.bucket.reduce(function(s,f){return s+fishValue(f.sp,f.lb);},0);
   var ownedClothes=state.ownedItems.filter(function(i){return ITEM_BY_ID[i]&&ITEM_BY_ID[i].price>0;}).length;
   var entries=[
@@ -1084,8 +1222,10 @@ function renderMenu(){
     {go:'bucketOv',icon:ICONS.pail,t:'INVENTORY',s:state.bucket.length?state.bucket.length+' fish, worth $'+money(worth):'Empty. Go catch something!'},
     {go:'baitOv',icon:BAIT_ART.minnow,t:'BAIT SHOP',s:state.ownedBaits.length+' of '+BAITS.length+' baits owned'},
     {go:'shopOv',icon:ICONS.hat,t:'CLOTHES SHOP',s:ownedClothes?ownedClothes+' items bought':'Dress up your angler'},
-    {go:'trophyOv',icon:ICONS.trophy,t:'TROPHY ROOM',s:Object.keys(state.records).length+' of '+SPECIES.length+' species caught'},
+    {go:'trophyOv',icon:ICONS.trophy,t:'FISH JOURNAL',s:Object.keys(state.records).length+' of '+SPECIES.length+' species caught'},
+    {go:'achOv',icon:ICONS.star,t:'ACHIEVEMENTS',s:state.ach.length+' of '+ACH.length+' unlocked'},
     {go:'boardOv',icon:ICONS.medal,t:'LEADERBOARD',s:state.username?'Playing as '+state.username+'#'+state.tag:'Biggest fish in the world'},
+    {go:'saveOv',icon:ICONS.disk,t:'SAVE CODE',s:'Move your game to another device'},
     {go:'helpOv',icon:ICONS.help,t:'HOW TO PLAY',s:'Bait, coins and big fish'}
   ];
   var list=$('menuList'); list.innerHTML='';
@@ -1116,7 +1256,7 @@ function renderBaitShop(){
 }
 function buyBait(id){
   var bt=BAIT_BY_ID[id]; if(!bt||owns(id)||state.coins<bt.price) return;
-  state.coins-=bt.price; state.ownedBaits.push(id); if(!state.line) state.bait=id;
+  state.coins-=bt.price; state.spent=(state.spent||0)+bt.price; state.ownedBaits.push(id); setTimeout(checkAch,1500); if(!state.line) state.bait=id;
   save(); renderBaitShop(); renderAll(); bumpCoins(); toast('Bought '+bt.name+'! Now on your hook.',2600,true);
 }
 
@@ -1153,7 +1293,7 @@ function renderShop(){
 function shopAct(){
   var it=ITEM_BY_ID[$('shopAction').dataset.item]; if(!it) return;
   var owned=state.ownedItems.indexOf(it.id)>=0;
-  if(!owned){ if(state.coins<it.price) return; state.coins-=it.price; state.ownedItems.push(it.id); bumpCoins(); toast('Bought the '+it.name.toLowerCase()+'!',2200,true); }
+  if(!owned){ if(state.coins<it.price) return; state.coins-=it.price; state.spent=(state.spent||0)+it.price; setTimeout(checkAch,1500); state.ownedItems.push(it.id); bumpCoins(); toast('Bought the '+it.name.toLowerCase()+'!',2200,true); }
   state.outfit[it.slot]=it.id; shopPreview=null; save(); renderHUD(); renderShop();
 }
 var invShow=60, inspectUid=null, cfResolve=null;
@@ -1218,7 +1358,9 @@ function askConfirm(o){
 }
 function cfDone(v){ $('confirmOv').hidden=true; var r=cfResolve; cfResolve=null; if(r) r(v); }
 function nextBest(f){ var n=null; state.bucket.forEach(function(g){ if(g.sp===f.sp&&g.uid!==f.uid&&(!n||g.lb>n.lb)) n=g; }); return n; }
-async function trySell(uids){
+var sellFrom=null;
+async function trySell(uids,from){
+  sellFrom=from||null;
   var board=boardFish();
   var hits=uids.filter(function(u){ var f=byUid(u); return f&&board[f.sp]&&board[f.sp].uid===u; });
   if(hits.length&&state.username){
@@ -1251,16 +1393,16 @@ function renderTrophies(){
   $('stats').innerHTML='<div class="fact"><span class="k">CAUGHT</span><span class="v">'+state.total+'</span></div><div class="fact"><span class="k">ON THE ICE</span><span class="v">'+fmtDuration(state.fishedSec/60)+'</span></div><div class="fact"><span class="k">SPECIES</span><span class="v">'+found+' / '+SPECIES.length+'</span></div><div class="fact"><span class="k">EARNED</span><span class="v">$'+money(state.earned)+'</span></div>';
   var grid=$('grid'); grid.innerHTML='';
   SPECIES.forEach(function(sp){
-    var r=state.records[sp.id], c=document.createElement('div'); c.className='card'+(r?'':' no');
+    var r=state.records[sp.id], c=document.createElement('button'); c.type='button'; c.className='card fish'+(r?'':' no'); c.dataset.sp=sp.id;
     var pic=document.createElement('div'); pic.className='pic';
     var L=Math.min(30,Math.round(14+16*Math.log(sp.max)/Math.log(150)));
     var gh=fishCanvas(sp.id,L,true).height;
     pic.appendChild(fishImg(sp.id,L,r?false:'#24406A',Math.max(2,Math.min(Math.floor(110/(L+2)),Math.floor(60/gh)))));
     c.appendChild(pic);
     var baitNames=BAITS.filter(function(b){return sp.baits[b.id]>=1;}).map(function(b){return b.name.toLowerCase();});
-    var nm=document.createElement('div'); nm.className='nm'; nm.textContent=r?sp.name.toUpperCase():'???';
+    var nm=document.createElement('div'); nm.className='nm'; nm.textContent=sp.name.toUpperCase();
     var v=document.createElement('div'); v.className='v';
-    v.textContent=r?fmtWeightText(r.lb):'Try '+(baitNames[0]||'any bait');
+    v.textContent=r?fmtWeightText(r.lb):'Not caught yet';
     c.appendChild(nm); c.appendChild(v); grid.appendChild(c);
   });
   $('recent').innerHTML=state.catches.length?state.catches.slice(0,8).map(function(c){
@@ -1365,7 +1507,7 @@ function poolTarget(){ return state.line?Math.min(7,3+Math.floor(effMinutes(stat
 function spawnFish(initial){
   var line=state.line, spot=line?line.spot:state.spot, bait=line?line.bait:state.bait;
   var T=line?effMinutes(line,Date.now()):0;
-  var list=speciesWeights(spot,bait,T).filter(function(x){return x.w>0;});
+  var list=speciesWeights(spot,bait,T,nowHour()).filter(function(x){return x.w>0;});
   if(!list.length) list=speciesWeights('shallows','worm',0).filter(function(x){return x.w>0;});
   var tot=0; list.forEach(function(x){tot+=x.w;}); var r=Math.random()*tot, sp=list[0].sp;
   for(var i=0;i<list.length;i++){ r-=list[i].w; if(r<=0){ sp=list[i].sp; break; } }
@@ -1389,7 +1531,17 @@ function draw(ms){
   var spot=state.line?state.line.spot:(fx?fx.spot:state.spot);
   var hx=holeX(), waterTop=iceY+ICE_H, i, x, y, r;
 
+  var storm=stormNow();
+  if(storm){ sky=[mixC(sky[0],[96,104,120],0.45),mixC(sky[1],[150,158,172],0.45)]; }
   for(y=0;y<=iceY;y++){ ctx.fillStyle=rgb(mixC(sky[0],sky[1],y/iceY)); ctx.fillRect(0,y,W,1); }
+  var aur=Math.max(0,(0.35-lt)/0.35), dayIdx=Math.floor((Date.now()-new Date().getTimezoneOffset()*60000)/86400000);
+  if(aur>0&&!storm&&hash(dayIdx+0.5)<0.75){
+    for(x=0;x<W;x+=2){
+      var ab=iceY*0.1+Math.sin(x*0.045+t*0.25)*5+Math.sin(x*0.011+t*0.07)*8, al=10+Math.sin(x*0.07+t*0.4)*5+Math.sin(x*0.023)*4;
+      var aa=(0.11+0.08*Math.sin(x*0.09+t*0.6))*aur;
+      for(r=0;r<al;r++){ var kk=r/al; ctx.fillStyle=(kk<0.65?'rgba(90,240,160,':'rgba(170,110,230,')+(aa*(1-kk*0.75)).toFixed(3)+')'; ctx.fillRect(x,Math.round(ab+r),2,1); }
+    }
+  }
   if(lt<0.6){ for(i=0;i<40;i++){ if(hash(i+3)*(1-lt)<0.25) continue; if(Math.sin(t*1.5+i*2)>-.6) P(Math.floor(hash(i*3.1)*W),Math.floor(hash(i*7.7+1)*iceY*0.75),i%5?'#BFD0F0':'#FFFFFF'); } }
   var day=h>=6&&h<18, p=day?(h-6)/12:(((h<6)?h+24:h)-18)/12;
   var sx=Math.round(W*(0.1+0.8*p)), sy=Math.round(iceY-14-Math.sin(Math.PI*p)*(iceY*0.62));
@@ -1534,6 +1686,11 @@ function draw(ms){
   }
   if(ms<shakeUntil){ canvas.style.transform='translate('+Math.round((Math.random()-.5)*2*shakeAmp)*px+'px,'+Math.round((Math.random()-.5)*2*shakeAmp)*px+'px)'; }
   else if(shakeAmp){ shakeAmp=0; canvas.style.transform=''; }
+  if(storm){
+    ctx.fillStyle='rgba(225,232,240,0.10)'; ctx.fillRect(0,0,W,iceY+ICE_H);
+    for(i=0;i<170;i++){ var wx2=Math.floor((hash(i*3.7)*W*1.5+t*(34+hash(i)*20))%(W*1.5))-W*0.25, wy2=Math.floor((hash(i*6.1)*(iceY+6)+t*(16+hash(i+5)*10))%(iceY+6));
+      P(Math.round(wx2+wy2*0.6)%W,wy2,'rgba(255,255,255,'+(0.55+0.4*hash(i+2)).toFixed(2)+')'); }
+  }
   for(i=0;i<36;i++){ var sxx=Math.floor((hash(i*2.3)*W+t*(3+hash(i)*4)+Math.sin(t+i)*3)%W), syy=Math.floor((hash(i*5.1)*iceY+t*(6+hash(i+2)*6))%iceY);
     P((sxx+W)%W,syy,'rgba(255,255,255,'+(0.5+0.4*hash(i+9)).toFixed(2)+')'); }
 }
@@ -1560,7 +1717,16 @@ function ensureIds(){
 }
 function boardFish(){ var best={}; state.bucket.forEach(function(f){ var b=best[f.sp]; if(!b||f.lb>b.lb||(f.lb===b.lb&&f.uid<b.uid)) best[f.sp]=f; }); return best; }
 function onBoard(f){ var b=boardFish()[f.sp]; return !!b&&b.uid===f.uid; }
-function boardPayload(){ var b=boardFish(); return SPECIES.filter(function(sp){return b[sp.id];}).map(function(sp){ var f=b[sp.id]; return {species:sp.id,lb:f.lb,inches:f.inches,bait:f.bait||null,spot:f.spot||null}; }); }
+function weekStart(now){ var d=new Date(now||Date.now()), day=(d.getUTCDay()+6)%7; return Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()-day); }
+function weekKey(){ var d=new Date(weekStart()); return 'w'+d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); }
+function bestBy(list){ var best={}; list.forEach(function(f){ var b=best[f.sp]; if(!b||f.lb>b.lb||(f.lb===b.lb&&f.uid<b.uid)) best[f.sp]=f; }); return best; }
+function boardPayload(){
+  var out=[], ws=weekStart(), wk=weekKey();
+  [[bestBy(state.bucket),'all'],[bestBy(state.bucket.filter(function(f){return f.at>=ws;})),wk]].forEach(function(pair){
+    SPECIES.forEach(function(sp){ var f=pair[0][sp.id]; if(f) out.push({species:sp.id,lb:f.lb,inches:f.inches,bait:f.bait||null,spot:f.spot||null,period:pair[1],caught_at:new Date(f.at).toISOString()}); });
+  });
+  return out;
+}
 function lbBase(){ return LEADERBOARD.url.replace(/\/$/,''); }
 function lbSync(now){ clearTimeout(lbTimer); lbTimer=setTimeout(lbPush,now?0:1200); }
 async function lbPush(){
@@ -1577,7 +1743,7 @@ async function lbPush(){
   lbBusy=false;
   if(ok&&JSON.stringify([state.username,state.tag,boardPayload()])!==state.lbSig) lbSync();
 }
-var lbSeq=0;
+var lbSeq=0, lbPeriod='all';
 async function renderBoard(){
   var sel=$('lbSpecies');
   if(!sel.options.length){ sel.innerHTML='<option value="">All fish</option>'+SPECIES.map(function(sp){return '<option value="'+sp.id+'">'+sp.name+'</option>';}).join(''); }
@@ -1590,7 +1756,7 @@ async function renderBoard(){
   var seq=++lbSeq, species=sel.value;
   ul.innerHTML='<li class="gap" style="padding:18px 6px">Loading the leaderboard...</li>';
   try{
-    var q='select=name,tag,species,lb,inches&order=lb.desc&limit=500'+(species?'&species=eq.'+encodeURIComponent(species):'');
+    var q='select=name,tag,species,lb,inches&order=lb.desc&limit=500&period=eq.'+encodeURIComponent(lbPeriod==='week'?weekKey():'all')+(species?'&species=eq.'+encodeURIComponent(species):'');
     var r=await fetch(lbBase()+'/rest/v1/board?'+q,{headers:lbHeaders({})});
     if(!r.ok) throw new Error('bad');
     var rows=await r.json(); if(seq!==lbSeq) return;
@@ -1635,6 +1801,216 @@ function saveName(e){
   lbSync(true);
   if(!$('boardOv').hidden) setTimeout(renderBoard,1500);
   toast(changed?'Name changed to '+n+'#'+state.tag+'.':'Welcome, '+n+'#'+state.tag+'! Grab your worms.',2600,true);
+}
+
+/* ================= DAILY CHALLENGE ================= */
+function dayKey(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function strSeed(str){ var h=2166136261; for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function ensureDaily(){
+  var k=dayKey(); if(state.daily&&state.daily.key===k) return;
+  var r=mulberry32(strSeed(k+'|'+(state.tag||'0')));
+  var hours=state.fishedSec/3600, spots=SPOTS.filter(function(x){return state.practice||hours>=x.unlockH;}).map(function(x){return x.id;});
+  var cands=SPECIES.filter(function(sp){ return sp.minWait<=90&&state.ownedBaits.some(function(b){return (sp.baits[b]||0)>=1;})&&spots.some(function(x){return (sp.spots[x]||0)>=1;}); });
+  var kinds=['species','count','weight','sell'], kind=kinds[Math.floor(r()*kinds.length)], d={key:k,kind:kind,progress:0,done:false};
+  var top=owns('sucker')?'sucker':owns('cut')?'cut':owns('minnow')?'minnow':'worm';
+  if(kind==='species'&&cands.length){ var sp=cands[Math.floor(r()*cands.length)]; d.sp=sp.id; d.target=1; d.reward=30+(sp.max>10?40:sp.max>3?20:0); }
+  else if(kind==='weight'){ d.target={worm:0.5,minnow:3,cut:8,sucker:15}[top]; d.reward={worm:30,minnow:50,cut:80,sucker:120}[top]; }
+  else if(kind==='sell'){ d.target={worm:25,minnow:100,cut:200,sucker:400}[top]; d.reward=Math.round(d.target*0.5); }
+  else { d.kind='count'; d.target=[5,8,10,12][Math.floor(r()*4)]; d.reward=d.target*5; }
+  state.daily=d; save();
+}
+function dailyText(d){
+  if(!d) return '';
+  if(d.kind==='species') return 'Catch a '+SP_BY_ID[d.sp].name.toLowerCase();
+  if(d.kind==='weight') return 'Catch a fish that weighs '+fmtWeightText(d.target)+' or more';
+  if(d.kind==='sell') return 'Sell $'+money(d.target)+' worth of fish';
+  return 'Catch '+d.target+' fish';
+}
+function renderDaily(){
+  var d=state.daily, box=$('dailyBox'); if(!d){ box.hidden=true; return; } box.hidden=false;
+  box.className='daily'+(d.done?' done':'');
+  var prog=d.kind==='sell'?'$'+money(Math.min(d.progress,d.target))+' / $'+money(d.target):d.kind==='weight'?(d.done?'1 / 1':'0 / 1'):Math.min(d.progress,d.target)+' / '+d.target;
+  box.innerHTML='<span class="lbl">TODAY\'S CHALLENGE</span><span class="t"></span><span class="r"><span>'+prog+'</span><b>'+(d.done?'DONE! +$'+d.reward:'Reward: $'+d.reward)+'</b></span>';
+  box.querySelector('.t').textContent=dailyText(d)+(d.done?'':'.');
+}
+function dailyEvent(type,v){
+  var d=state.daily; if(!d||d.done||d.key!==dayKey()) return;
+  if(type==='catch'){
+    if(d.kind==='species'&&v.sp===d.sp) d.progress=1;
+    else if(d.kind==='count') d.progress++;
+    else if(d.kind==='weight'&&v.lb>=d.target) d.progress=1;
+  }else if(type==='sell'&&d.kind==='sell') d.progress+=v;
+  var goal=d.kind==='sell'||d.kind==='count'?d.target:1;
+  if(d.progress>=goal){ d.done=true; state.coins+=d.reward; state.dailyDone=(state.dailyDone||0)+1; save(); renderHUD();
+    setTimeout(function(){ queueToast('DAILY CHALLENGE DONE! +$'+d.reward); bumpCoins(); checkAch(); },2400); }
+  save();
+}
+
+/* ================= ACHIEVEMENTS ================= */
+function speciesFound(){ return Object.keys(state.records).length; }
+function bestLb(){ var b=overallBest(); return b?b.lb:0; }
+function paidClothes(){ return state.ownedItems.filter(function(i){return ITEM_BY_ID[i]&&ITEM_BY_ID[i].price>0;}).length; }
+function flag(k){ return [state.flags[k]?1:0,1]; }
+var ACH=[
+ {id:'first',name:'First Catch',desc:'Catch your first fish.',reward:10,prog:function(){return [state.total,1];}},
+ {id:'c25',name:'Bucket Filler',desc:'Catch 25 fish.',reward:25,prog:function(){return [state.total,25];}},
+ {id:'c100',name:'Hundred Club',desc:'Catch 100 fish.',reward:100,prog:function(){return [state.total,100];}},
+ {id:'minnow',name:'Upgrade',desc:'Buy minnows.',reward:20,prog:function(){return [owns('minnow')?1:0,1];}},
+ {id:'allbait',name:'Full Tackle Box',desc:'Own every kind of bait.',reward:200,prog:function(){return [state.ownedBaits.length,BAITS.length];}},
+ {id:'deep',name:'Into the Deep',desc:'Unlock the Deep Hole (8 hours of fishing).',reward:100,prog:function(){return [Math.min(8,Math.floor(state.fishedSec/3600)),8];}},
+ {id:'sp6',name:'Collector',desc:'Catch 6 different species.',reward:100,prog:function(){return [speciesFound(),6];}},
+ {id:'sp12',name:'Master Angler',desc:'Catch all 12 species.',reward:500,prog:function(){return [speciesFound(),12];}},
+ {id:'lb10',name:'Ten Pounder',desc:'Land a fish of 10 lb or more.',reward:50,prog:function(){return [bestLb()>=10?1:0,1];}},
+ {id:'lb50',name:'Monster',desc:'Land a fish of 50 lb or more.',reward:200,prog:function(){return [bestLb()>=50?1:0,1];}},
+ {id:'lb100',name:'Legend',desc:'Land a fish of 100 lb or more.',reward:500,prog:function(){return [bestLb()>=100?1:0,1];}},
+ {id:'wait6',name:'Patience',desc:'Get a bite after waiting 6 hours or more.',reward:100,prog:function(){return flag('wait6');}},
+ {id:'cast24',name:'True Patience',desc:'Leave one cast in the water for a full day.',reward:300,prog:function(){return flag('cast24');}},
+ {id:'night',name:'Night Owl',desc:'Catch a fish between midnight and 5 AM.',reward:50,prog:function(){return flag('night');}},
+ {id:'dawn',name:'Early Bird',desc:'Catch a fish at dawn, 5 to 8 AM.',reward:50,prog:function(){return flag('dawn');}},
+ {id:'spend',name:'Big Spender',desc:'Spend 1,000 coins.',reward:100,prog:function(){return [state.spent||0,1000];}},
+ {id:'style',name:'Fashionista',desc:'Buy 10 pieces of clothing.',reward:100,prog:function(){return [paidClothes(),10];}},
+ {id:'daily5',name:'Daily Grinder',desc:'Finish 5 daily challenges.',reward:150,prog:function(){return [state.dailyDone||0,5];}}
+];
+var toastQ=[], toastBusy=false;
+function queueToast(msg){ toastQ.push(msg); pumpToast(); }
+function pumpToast(){ if(toastBusy||!toastQ.length) return; toastBusy=true; toast(toastQ.shift(),2600,true); setTimeout(function(){ toastBusy=false; pumpToast(); },2900); }
+function checkAch(){
+  var got=[];
+  ACH.forEach(function(a){ if(state.ach.indexOf(a.id)>=0) return; var p=a.prog(); if(p[0]>=p[1]){ state.ach.push(a.id); state.coins+=a.reward; got.push(a); } });
+  if(!got.length) return;
+  save(); renderHUD(); bumpCoins();
+  if(got.length>2){ var sum=got.reduce(function(s,a){return s+a.reward;},0); queueToast(got.length+' ACHIEVEMENTS UNLOCKED! +$'+sum); }
+  else got.forEach(function(a){ queueToast('ACHIEVEMENT: '+a.name.toUpperCase()+' +$'+a.reward); });
+  if(!$('achOv').hidden) renderAch();
+}
+function renderAch(){
+  $('achSum').textContent=state.ach.length+' of '+ACH.length+' unlocked. Each one pays coins.';
+  var ul=$('achList'); ul.innerHTML='';
+  ACH.forEach(function(a){
+    var have=state.ach.indexOf(a.id)>=0, p=a.prog(), pct=Math.min(100,Math.round(Math.min(p[0],p[1])/p[1]*100));
+    var li=document.createElement('li'); li.className=have?'got':'locked';
+    li.appendChild(spriteCanvas(ICONS.star.rows,ICONS.star.map));
+    var mid=document.createElement('div');
+    mid.innerHTML='<div class="nm"></div><div class="ds"></div>'+(have||p[1]===1?'':'<span class="bar"><i style="width:'+pct+'%"></i></span>');
+    mid.querySelector('.nm').textContent=a.name.toUpperCase();
+    mid.querySelector('.ds').textContent=a.desc+(have||p[1]===1?'':' ('+money(Math.min(p[0],p[1]))+' / '+money(p[1])+')');
+    li.appendChild(mid);
+    var rw=document.createElement('span'); rw.className='rw'; rw.textContent=have?'DONE':'+$'+a.reward; li.appendChild(rw);
+    ul.appendChild(li);
+  });
+}
+
+/* ================= FISH JOURNAL ================= */
+var FACTS={
+ bluegill:'Bluegill have a dark spot on the back of their gill flap. Males guard their nests and will even nip at swimmers who get too close.',
+ perch:'Yellow perch travel in big schools, so where you catch one, there are usually more nearby.',
+ crappie:'Crappie love to hide around sunken trees and brush, and they bite best around dawn and dusk.',
+ largemouth:"A largemouth bass's top jaw reaches past the back of its eye. That big mouth is how it got its name.",
+ smallmouth:'Smallmouth bass often jump right out of the water when hooked, and anglers say they fight harder than almost any fish their size.',
+ walleye:'Walleye have glassy eyes that see well in dim light, which is why they feed most at dusk and at night.',
+ channel:"Channel catfish taste with their whole body. Their skin is covered in taste buds, so they can find food in total darkness.",
+ pike:'Northern pike are ambush hunters with hundreds of sharp teeth. They can eat fish almost half their own size.',
+ laketrout:'Lake trout live in cold, deep lakes and can live for decades. Some have lived over 50 years.',
+ muskie:"Muskie are called 'the fish of 10,000 casts' because they are so hard to catch.",
+ flathead:'Flathead catfish hunt live fish, mostly at night, and they can grow to over 100 pounds.',
+ sturgeon:'Lake sturgeon can live over 100 years, and their family has been around since the time of the dinosaurs.'
+};
+var jSp=null;
+function renderJournal(){
+  var sp=SP_BY_ID[jSp]; if(!sp){ openOv('trophyOv'); return; }
+  var r=state.records[sp.id], n=state.counts[sp.id]||0;
+  var pic=$('jPic'); pic.innerHTML='';
+  var w=Math.min(300,(document.documentElement.clientWidth||360)-90);
+  pic.appendChild(fishImg(sp.id,46,r?false:'#24406A',Math.max(3,Math.floor(w/48))));
+  $('jName').textContent=sp.name.toUpperCase();
+  $('jRec').textContent=r?'Your record: '+fmtWeightText(r.lb)+', '+r.inches+' in':'You have not caught one yet';
+  $('jFact').textContent=r?FACTS[sp.id]:'Catch one to unlock its fun fact.';
+  var spots=SPOTS.filter(function(x){return (sp.spots[x.id]||0)>=1;}).sort(function(a,b){return sp.spots[b.id]-sp.spots[a.id];}).map(function(x){return x.name;});
+  var baits=BAITS.filter(function(b){return (sp.baits[b.id]||0)>=1;}).sort(function(a,b){return sp.baits[b.id]-sp.baits[a.id];}).map(function(b){return b.name;});
+  var times=['dawn','day','dusk','night'].sort(function(a,b){return ACT[sp.id][b]-ACT[sp.id][a];}).slice(0,2).map(function(x){return PERIOD_NAME[x];});
+  function fact(k,v){ return '<div class="fact"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; }
+  $('jFacts').innerHTML=fact('WHERE',spots.join(', ')||'Unknown')+fact('BAIT',baits.join(', ')||'Unknown')+fact('BEST TIME',times.join(', '))+fact('SIZE',fmtWeightText(sp.min)+' to '+fmtWeightText(sp.max))+
+    fact('SHOWS UP AFTER',sp.minWait?fmtDuration(sp.minWait)+' of waiting':'Right away')+fact('YOU CAUGHT',n+(n===1?' fish':' fish'));
+}
+
+/* ================= SAVE CODE ================= */
+function exportCode(){ return 'BZ1.'+btoa(unescape(encodeURIComponent(JSON.stringify(state)))); }
+function parseCode(c){
+  c=(c||'').replace(/\s+/g,''); if(c.indexOf('BZ1.')!==0) throw new Error('prefix');
+  var d=JSON.parse(decodeURIComponent(escape(atob(c.slice(4))))); if(!d||d.v!==1||typeof d.coins!=='number') throw new Error('shape'); return d;
+}
+function renderSave(){ $('saveOut').value=exportCode(); $('saveIn').value=''; $('saveErr').textContent=''; }
+function copySave(){
+  var t=$('saveOut'), v=t.value;
+  function fallback(){ try{ t.focus(); t.select(); }catch(e){} toast('Code selected. Press Ctrl+C (or Cmd+C) to copy it.',3200); }
+  try{ navigator.clipboard.writeText(v).then(function(){ toast('Save code copied!',2000,true); },fallback); }catch(e){ fallback(); }
+}
+function loadSave(){
+  var d; try{ d=parseCode($('saveIn').value); }catch(e){ $('saveErr').textContent="That doesn't look like a Below Zero save code. Copy the whole code and try again."; return; }
+  askConfirm({title:'LOAD THIS SAVE?',msg:'This replaces the game on this device with the one from the code: '+(d.username?d.username+'#'+d.tag+', ':'')+(d.total||0)+' fish caught and $'+money(d.coins)+'. The game currently on this device will be gone.',yes:'LOAD IT',no:'CANCEL'}).then(function(a){
+    if(a!=='yes') return;
+    state=upgrade(d); state.line=state.line||null; fx=null; parts=[]; debris=[]; cracks=[]; fishes=[]; infoCache={}; state.lbSig=null;
+    save(); closeAll(); renderAll(); lbSync(true); toast('Save loaded. Welcome back, '+(state.username||'angler')+'!',3000,true);
+  });
+}
+
+/* ================= WELCOME BACK ================= */
+var hiddenAt=0;
+function showAway(since){
+  if(!state.username||fx||!$('nameOv').hidden) return;
+  var now=Date.now(), main='', line=state.line;
+  $('awayTime').textContent='You were away for '+fmtDuration((now-since)/60000)+'.';
+  if(line&&hooked(line)){ var info=lineInfo(line); main='<span class="away-big">FISH ON!</span><span class="t">Something bit '+fmtDuration(Math.max(0,now-info.at)/60000)+' ago. It is still on your line.</span>'; }
+  else if(line) main='<span class="away-big">STILL WAITING</span><span class="t">Your line has been in for '+fmtDuration(effMinutes(line,now))+'. No bite yet.</span>';
+  else main='<span class="away-big">LINE IS DRY</span><span class="t">Cast to start fishing.</span>';
+  $('awayMain').innerHTML=main;
+  var items=['<li>'+todLine()+'</li>'];
+  ensureDaily(); if(state.daily&&!state.daily.done) items.push('<li>Today\'s challenge: '+dailyText(state.daily)+' for $'+state.daily.reward+'.</li>');
+  $('awayList').innerHTML=items.join('');
+  $('awayOv').hidden=false; try{ $('awayOk').focus(); }catch(e){}
+}
+
+/* ================= TUTORIAL ================= */
+var TUT=[
+ {text:'Tap CAST to drop your worm through the ice.'},
+ {text:'Now wait. Worms usually get a bite in about a minute. Watch for FISH ON!'},
+ {text:'Something bit! Tap REEL IT IN.'},
+ {text:'Nice catch! SELL it for coins, or KEEP it in your inventory.'},
+ {text:'Save up $60 for minnows: open MENU, then BAIT SHOP. Bigger bait brings bigger fish, but they bite slower.',ok:true},
+ {text:'Time of day matters! The NOW sign at the top shows what is biting. Dawn and dusk are best for big fish.',ok:true}
+];
+function updateCoach(){
+  var c=$('coach'), st=state.tut||0;
+  if(st>=TUT.length){ c.hidden=true; return; }
+  var busy=!!(fx&&!fx.out), on=!!(state.line&&hooked(state.line));
+  if(st===0&&state.line) st=1;
+  if(st===1&&on) st=2;
+  if((st===1||st===2)&&!state.line&&!fx) st=0;
+  if(st===2&&busy) st=3;
+  if(st===3&&!busy) st=4;
+  if(st!==state.tut){ state.tut=st; save(); }
+  var show=$('nameOv').hidden&&!anyOpen()&&!(st===2&&!on)&&!(st===3&&!(fx&&fx.card))&&!(st>=4&&(state.line||busy))&&!(st<3&&busy);
+  c.hidden=!show; if(!show) return;
+  if($('coachTxt').textContent!==TUT[st].text) $('coachTxt').textContent=TUT[st].text;
+  $('coachOk').hidden=!TUT[st].ok;
+  var g=game.getBoundingClientRect(), pb=$('panel').getBoundingClientRect();
+  c.style.bottom=Math.round(g.bottom-pb.top+14)+'px';
+}
+
+/* ================= COINS ================= */
+function flyCoins(from){
+  if(reduceMotion) return;
+  try{
+    var fr=from&&from.getBoundingClientRect?from.getBoundingClientRect():{left:innerWidth/2,top:innerHeight/2,width:0,height:0};
+    var to=$('coinChip').getBoundingClientRect();
+    for(var i=0;i<8;i++)(function(i){
+      var c=document.createElement('span'); c.className='coin flycoin';
+      var sx=fr.left+fr.width/2+(Math.random()-0.5)*50, sy=fr.top+fr.height/2+(Math.random()-0.5)*20;
+      c.style.left=sx+'px'; c.style.top=sy+'px'; document.body.appendChild(c);
+      setTimeout(function(){ c.style.transform='translate('+(to.left+6-sx)+'px,'+(to.top+6-sy)+'px) scale(.8)'; },20+i*45);
+      setTimeout(function(){ c.remove(); },820+i*45);
+    })(i);
+  }catch(e){}
 }
 
 /* ================= FISH ALERT ================= */
@@ -1729,6 +2105,7 @@ var started=false;
 function start(data){
   if(started) return; started=true;
   state=(data&&data.v===1)?upgrade(data):(load()||freshState());
+  var seenBefore=state.lastSeen;
   try{ if(window.claude&&window.claude.hot&&window.claude.hot.snapshot) window.claude.hot.snapshot(function(){return state;}); }catch(e){}
 
   $('spots').addEventListener('click',function(e){ var b=e.target.closest('[data-spot]'); if(!b||b.disabled) return;
@@ -1749,13 +2126,23 @@ function start(data){
     reelIn();
   });
   $('keep').addEventListener('click',endFx);
-  $('sellNow').addEventListener('click',function(){ trySell([state.last.uid]).then(function(got){ if(got){ endFx(); toast('Sold for $'+money(got)+'!',2000,true); } }); });
+  $('sellNow').addEventListener('click',function(){ trySell([state.last.uid],$('sellNow')).then(function(got){ if(got){ endFx(); toast('Sold for $'+money(got)+'!',2000,true); } }); });
   $('openMenu').addEventListener('click',function(){ openOv('menuOv'); });
   $('alertBtn').addEventListener('click',openAlert);
+  $('saveCopy').addEventListener('click',copySave);
+  $('saveLoad').addEventListener('click',loadSave);
+  $('awayOk').addEventListener('click',function(){ $('awayOv').hidden=true; });
+  $('coachOk').addEventListener('click',function(){ state.tut=(state.tut||0)+1; save(); updateCoach(); });
+  $('coachSkip').addEventListener('click',function(){ state.tut=99; save(); updateCoach(); });
+  $('grid').addEventListener('click',function(e){ var b=e.target.closest('[data-sp]'); if(b){ jSp=b.dataset.sp; openOv('journalOv'); } });
+  $('jBack').addEventListener('click',function(){ openOv('trophyOv'); });
   $('nameForm').addEventListener('submit',saveName);
   $('nameClose').addEventListener('click',function(){ $('nameOv').hidden=true; });
   $('lbRename').addEventListener('click',function(){ openName(false); });
   $('lbSpecies').addEventListener('change',renderBoard);
+  $('lbPeriods').addEventListener('click',function(e){ var b=e.target.closest('[data-period]'); if(!b) return; lbPeriod=b.dataset.period;
+    $('lbPeriods').querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed',String(x===b)); }); renderBoard(); });
+  setInterval(function(){ if(state.username) lbSync(); },10*60000);
   try{ if(!inFrame()){ var fi=document.createElement('link'); fi.rel='icon'; fi.href=fishIcon(); document.head.appendChild(fi); } }catch(e){}
   renderAlertBtn();
   if(state.line&&hooked(state.line)) alertedSeed=state.line.seed;
@@ -1775,12 +2162,12 @@ function start(data){
     renderShop(); });
   $('shopAction').addEventListener('click',shopAct);
   $('bucketList').addEventListener('click',function(e){ var b=e.target.closest('[data-uid]'); if(b) openFish(+b.dataset.uid); });
-  $('sellAll').addEventListener('click',function(){ trySell(state.bucket.map(function(f){return f.uid;})).then(function(got){ renderBucket(); if(got) toast('Sold for $'+money(got)+'!',2200,true); }); });
+  $('sellAll').addEventListener('click',function(){ trySell(state.bucket.map(function(f){return f.uid;}),$('sellAll')).then(function(got){ renderBucket(); if(got) toast('Sold for $'+money(got)+'!',2200,true); }); });
   $('invSort').addEventListener('change',function(){ invShow=60; renderBucket(); });
   $('invSpecies').addEventListener('change',function(){ invShow=60; renderBucket(); });
   $('invMore').addEventListener('click',function(){ invShow+=60; renderBucket(); });
   $('fiBack').addEventListener('click',function(){ openOv('bucketOv'); });
-  $('fiSell').addEventListener('click',function(){ var u=inspectUid; trySell([u]).then(function(got){ if(got){ toast('Sold for $'+money(got)+'!',2000,true); openOv('bucketOv'); } }); });
+  $('fiSell').addEventListener('click',function(){ var u=inspectUid; trySell([u],$('fiSell')).then(function(got){ if(got){ toast('Sold for $'+money(got)+'!',2000,true); openOv('bucketOv'); } }); });
   $('cfYes').addEventListener('click',function(){ cfDone('yes'); });
   $('cfNo').addEventListener('click',function(){ cfDone('no'); });
   $('cfAlt').addEventListener('click',function(){ cfDone('alt'); });
@@ -1789,10 +2176,14 @@ function start(data){
   $('resetNo').addEventListener('click',function(){ $('resetAsk').hidden=true; $('reset').hidden=false; });
   $('resetYes').addEventListener('click',function(){ state=freshState(); armedUntil=0; fx=null; parts=[]; debris=[]; cracks=[]; fishes=[]; save(); closeAll(); toast('Fresh start. Grab your worms!',2400,true); });
   document.addEventListener('keydown',function(e){
-    if(e.key==='Escape'){ if(!$('confirmOv').hidden){ cfDone('no'); return; } if(!$('nameOv').hidden){ if(state.username) $('nameOv').hidden=true; return; } if(anyOpen()) closeAll(); else if(fx&&fx.card&&!fx.out) endFx(); return; }
+    if(e.key==='Escape'){ if(!$('confirmOv').hidden){ cfDone('no'); return; } if(!$('awayOv').hidden){ $('awayOv').hidden=true; return; } if(!$('nameOv').hidden){ if(state.username) $('nameOv').hidden=true; return; } if(anyOpen()) closeAll(); else if(fx&&fx.card&&!fx.out) endFx(); return; }
     if((e.key===' '||e.code==='Space') && (document.activeElement===document.body||!document.activeElement) && !anyOpen() && !(fx&&!fx.out)){ e.preventDefault(); $('go').click(); }
   });
-  document.addEventListener('visibilitychange',function(){ if(!document.hidden){ renderSonar(); tick(); } });
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){ hiddenAt=Date.now(); state.lastSeen=Date.now(); save(); return; }
+    if(hiddenAt&&Date.now()-hiddenAt>10*60000&&!anyOpen()) showAway(hiddenAt);
+    hiddenAt=0; renderSonar(); tick(); });
+  window.addEventListener('pagehide',function(){ state.lastSeen=Date.now(); save(); });
 
   renderAll(); save();
   layout();
@@ -1800,7 +2191,9 @@ function start(data){
   setInterval(tick,250);
   if(reduceMotion) setInterval(function(){ draw(performance.now()); },1000); else requestAnimationFrame(loop);
   if(state.last && state.last.seen===false){ startFx(state.last,true); showCard(); }
-  if(!state.username) openName(true); else lbSync(true);
+  ensureDaily();
+  if(!state.username) openName(true); else { lbSync(true); if(seenBefore&&Date.now()-seenBefore>10*60000&&!fx) showAway(seenBefore); }
+  setTimeout(checkAch,1500);
   window.addEventListener('online',function(){ lbSync(true); });
 }
 try{
