@@ -1556,18 +1556,19 @@ function draw(ms){
     ctx.fillStyle=shade('#3A2A20',0.3+dk); ctx.fillRect(bx,base,1,2);
   }
 
+  var dkL=dk*0.3;
   var wc=WATER[spot]||WATER.shallows, wt=hexC(wc[0]), wb=hexC(wc[1]);
-  for(y=waterTop;y<H;y++){ var k=(y-waterTop)/Math.max(1,fy-waterTop); ctx.fillStyle=rgb(mixC(mixC(wt,wb,Math.min(1,k)),DARK,dk*0.9)); ctx.fillRect(0,y,W,1); }
+  for(y=waterTop;y<H;y++){ var k=(y-waterTop)/Math.max(1,fy-waterTop); ctx.fillStyle=rgb(mixC(mixC(wt,wb,Math.min(1,k)),DARK,dkL*0.9)); ctx.fillRect(0,y,W,1); }
   if(lt>0.2){
     ctx.fillStyle='rgba(220,240,255,'+(0.07*lt).toFixed(3)+')';
     for(i=0;i<3;i++){ var sw=3+i*2, off=(i-1)*6; ctx.beginPath(); ctx.moveTo(hx-sw+off*0.2,waterTop); ctx.lineTo(hx+sw+off*0.2,waterTop); ctx.lineTo(hx+sw*3+off*3,fy); ctx.lineTo(hx-sw*3+off*3,fy); ctx.closePath(); ctx.fill(); }
   }
-  var sed=shade('#2A3A3E',0.15+dk), sedHi=shade('#4A5A52',0.15+dk), rock=shade('#56606A',0.1+dk);
+  var sed=shade('#2A3A3E',0.15+dkL), sedHi=shade('#4A5A52',0.15+dkL), rock=shade('#56606A',0.1+dkL);
   for(x=0;x<W;x++){ var fl=fy+Math.round(1.5*Math.sin(x*0.13)+Math.sin(x*0.41)); ctx.fillStyle=sedHi; ctx.fillRect(x,fl,1,1); ctx.fillStyle=sed; ctx.fillRect(x,fl+1,1,H-fl); }
   for(i=0;i<W/18;i++){ disc(Math.round(hash(i*5.3)*W),fy+1,1+Math.round(hash(i*2.1)*2),rock); }
   var wn={shallows:14,weedline:30,deep:5}[spot], wmax={shallows:16,weedline:Math.max(20,(fy-waterTop)*0.65),deep:10}[spot];
   for(i=0;i<wn;i++){
-    var wx=Math.round(hash(i*9.7+(spot.length))*W), wh=Math.round(6+hash(i*4.4)*wmax), col=i%2?shade('#3F8A47',0.2+dk):shade('#2E6B3A',0.2+dk);
+    var wx=Math.round(hash(i*9.7+(spot.length))*W), wh=Math.round(6+hash(i*4.4)*wmax), col=i%2?shade('#3F8A47',0.2+dkL):shade('#2E6B3A',0.2+dkL);
     for(r=0;r<wh;r++){ var sway=Math.round(Math.sin(t*1.2+i+r*0.22)*(r/wh)*2.4); ctx.fillStyle=col; ctx.fillRect(wx+sway,fy-r,1,1); if(r%4===2) ctx.fillRect(wx+sway+(i%2?1:-1),fy-r,1,1); }
   }
   for(i=0;i<7;i++){ var bp=((t*0.12+hash(i))%1), byy=Math.round(fy-(fy-waterTop)*bp), bxx=Math.round(hash(i*3.7)*W+Math.sin(t*2+i)*1.5);
@@ -1605,7 +1606,7 @@ function draw(ms){
   }
 
   var gapL=hx-5, gapR=hx+5;
-  var snow=shade('#F4F9FC',dk*0.8), ice=shade('#BFE3F2',dk*0.8), ice2=shade('#A2D0E6',dk*0.8), iceLo=shade('#6FA6C2',dk*0.8);
+  var snow=shade('#F4F9FC',dkL*0.8), ice=shade('#BFE3F2',dkL*0.8), ice2=shade('#A2D0E6',dkL*0.8), iceLo=shade('#6FA6C2',dkL*0.8);
   for(x=0;x<W;x++){
     if(x>=gapL&&x<=gapR) continue;
     ctx.fillStyle=snow; ctx.fillRect(x,iceY,1,2);
@@ -1614,10 +1615,10 @@ function draw(ms){
     ctx.fillStyle=iceLo; ctx.fillRect(x,iceY+ICE_H-1,1,1);
   }
   ctx.fillStyle=snow; ctx.fillRect(gapL-3,iceY-1,3,1); ctx.fillRect(gapR+1,iceY-1,3,1); ctx.fillRect(gapL-2,iceY-2,1,1); ctx.fillRect(gapR+2,iceY-2,1,1);
-  ctx.fillStyle=shade(wc[0],dk); ctx.fillRect(gapL,iceY+2,gapR-gapL+1,ICE_H-2);
+  ctx.fillStyle=shade(wc[0],dkL); ctx.fillRect(gapL,iceY+2,gapR-gapL+1,ICE_H-2);
   ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.fillRect(gapL+1,iceY+2,gapR-gapL-1,1);
-  ctx.fillStyle=shade('#3E6E8C',dk*0.7); cracks.forEach(function(c){ ctx.fillRect(hx+c[0],iceY+c[1],1,1); });
-  debris.forEach(function(d){ ctx.fillStyle=shade(d.c,dk*0.8); ctx.fillRect(hx+d.dx,d.y,d.sz,d.sz); });
+  ctx.fillStyle=shade('#3E6E8C',dkL*0.7); cracks.forEach(function(c){ ctx.fillRect(hx+c[0],iceY+c[1],1,1); });
+  debris.forEach(function(d){ ctx.fillStyle=shade(d.c,dkL*0.8); ctx.fillRect(hx+d.dx,d.y,d.sz,d.sz); });
 
   // crane for trophy fish
   var craneTip=null;
@@ -1626,7 +1627,7 @@ function draw(ms){
     if(fx.out){ var ko2=Math.max(0,(ms-fx.out-250)/900); cx=tgt+(W+40-tgt)*ko2*ko2; }
     cx=Math.round(cx);
     craneTip=[cx-10,Math.max(2,Math.max(hudB+3,iceY-Math.round(fx.L*0.8))-7)];
-    drawCrane(cx,craneTip[0],craneTip[1],dk,ms);
+    drawCrane(cx,craneTip[0],craneTip[1],dkL,ms);
   }
 
   var hop=(F&&!F.pre&&!fx.out&&F.ft<REEL+HAUL+3500&&Math.floor(F.ft/170)%2)?1:0;
