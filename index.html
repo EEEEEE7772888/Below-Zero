@@ -325,6 +325,24 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
 .ach li.got .rw{color:var(--sonar)}
 .journal-fact{margin:0;padding:10px 12px;background:var(--panel-lo);border:3px dashed #23406E;font:20px/1.2 var(--term);text-align:left;width:100%}
 
+/* Holes, gear, variants, legends */
+.holes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.hole-chip{cursor:pointer;display:grid;gap:4px;justify-items:center;padding:7px 2px 6px;background:var(--panel-lo);border:3px solid var(--edge);color:var(--muted);min-width:0}
+.hole-chip .hn{font:8px/1 var(--pixel)}
+.hole-chip .hs{font:17px/1 var(--term);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.hole-chip[aria-pressed="true"]{border-color:var(--gold);background:#1D3866;color:var(--ice)}
+.hole-chip.on{background:var(--red);color:#fff;border-color:#3A0A0C;animation:pulse .6s steps(2) infinite}
+.hole-chip:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.gear-group{font:9px/1 var(--pixel);color:var(--gold);margin-top:6px}
+.card.fish.golden{border-color:var(--gold);background:linear-gradient(160deg,#3A3214,var(--panel-lo) 60%)}
+.card.fish.albino{border-color:#E8E2DC}
+.card.legend{border-color:var(--gold);box-shadow:inset 0 0 0 2px #6B5214}
+.card.legend .nm{color:var(--gold)}
+.ribbon.gold{background:var(--gold);color:var(--gold-ink);border-color:var(--gold-ink)}
+.ribbon.white{background:#F2EEEA;color:#2A2A2A;border-color:#8A847E}
+.lb .nm .var{font:14px/1 var(--term);color:var(--gold);margin-left:6px}
+.season-note{margin:0;font:18px/1.15 var(--term);color:var(--gold)}
+
 /* Trophy room */
 .best{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:10px;background:var(--panel-lo);border:3px solid var(--edge)}
 .best .stand{width:auto;padding:8px}
@@ -383,6 +401,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
     <div class="spacer"></div>
 
     <section class="panel" id="panel" aria-label="Fishing controls">
+      <div class="holes" id="holes" hidden></div>
       <button class="loadout" id="loadout" type="button" aria-label="Change spot and bait"></button>
       <div class="sonar" id="sonar" hidden>
         <div class="sweep"></div>
@@ -392,7 +411,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
         <div class="s-next" id="sonarNext"></div>
       </div>
       <div class="catchui" id="catchUI" hidden>
-        <span class="lbl">YOU CAUGHT</span>
+        <span class="lbl" id="catchLbl">YOU CAUGHT</span>
         <div class="ribbons" id="ribbons"></div>
         <div class="c-name" id="catchName"></div>
         <div class="c-weight" id="catchWeight"></div>
@@ -492,6 +511,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
       <div class="d-head"><h2 class="d-title" id="tackleTitle">TACKLE BOX</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
       <p class="note" id="tackleNote" hidden style="color:var(--red-hi)">Reel in your line first to change your spot or bait.</p>
       <p class="note" id="todNote" style="color:var(--gold)"></p>
+      <div><div class="lbl-row"><span class="lbl">LAKE</span><span class="desc" id="lakeDesc"></span></div><div class="seg" id="lakesSeg"></div></div>
       <div><div class="lbl-row"><span class="lbl">SPOT</span><span class="desc" id="spotDesc"></span></div><div class="seg" id="spots"></div></div>
       <div><div class="lbl-row"><span class="lbl">BAIT</span><span class="desc" id="baitDesc"></span></div><div class="baits" id="baits"></div></div>
       <label class="toggle" id="practiceRow" for="practice"><input type="checkbox" id="practice"><span class="box"></span><span>Fast time (practice, can't sell)</span></label>
@@ -516,7 +536,8 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
   <div class="overlay" id="boardOv" hidden>
     <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="boardTitle">
       <div class="d-head"><h2 class="d-title" id="boardTitle">WORLD LEADERBOARD</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
-      <div class="seg" id="lbPeriods" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button type="button" data-period="all" aria-pressed="true">ALL TIME</button><button type="button" data-period="week" aria-pressed="false">THIS WEEK</button></div>
+      <div class="seg" id="lbPeriods" style="grid-template-columns:repeat(4,minmax(0,1fr))"><button type="button" data-period="all" aria-pressed="true">ALL TIME</button><button type="button" data-period="season" aria-pressed="false">SEASON</button><button type="button" data-period="week" aria-pressed="false">WEEK</button><button type="button" data-period="past" aria-pressed="false">HALL OF FAME</button></div>
+      <p class="season-note" id="lbSeason"></p>
       <div class="lb-tools">
         <label class="lbl" for="lbSpecies">BIGGEST FISH</label>
         <select id="lbSpecies"></select>
@@ -524,6 +545,15 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
       <ul class="lb" id="lbList"></ul>
       <div class="me-line"><span class="v" id="lbMe"></span><button class="pbtn" type="button" id="lbRename">CHANGE NAME</button></div>
       <p class="note" id="lbNote">Your biggest fish of each kind is on the board while you keep it. Sell it and it comes off. The weekly board only counts fish caught since Monday, and it starts fresh every week. Practice fish never count.</p>
+    </div>
+  </div>
+
+  <!-- GEAR SHOP -->
+  <div class="overlay" id="gearOv" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="gearTitle">
+      <div class="d-head"><h2 class="d-title" id="gearTitle">GEAR SHOP</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <div class="wallet"><span class="lbl">YOUR COINS</span><span class="v"><span class="coin"></span><span data-coins>0</span></span></div>
+      <div id="gearList" style="display:grid;gap:8px"></div>
     </div>
   </div>
 
@@ -582,6 +612,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
       <div id="bestBox"></div>
       <div class="stats" id="stats"></div>
       <div class="lbl">SPECIES (TAP ONE TO READ ABOUT IT)</div>
+      <div class="seg" id="jLakes" style="grid-template-columns:repeat(3,minmax(0,1fr))"></div>
       <div class="grid" id="grid"></div>
       <div class="lbl">RECENT CATCHES</div>
       <ul class="recent" id="recent"></ul>
@@ -605,6 +636,12 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
         <li>Spend coins in the <span style="color:var(--gold)">Bait Shop</span>. Better bait brings bigger fish that pay more, but you have to wait longer.</li>
         <li>The <span style="color:var(--gold)">size limit</span> goes up until a fish bites. The clock keeps running even with this page closed.</li>
         <li>Weedline opens after 1 hour of total fishing. The Deep Hole opens after 8 hours.</li>
+        <li>In the <span style="color:var(--gold)">Gear Shop</span>, buy up to 4 holes. Each hole has its own lake, spot and bait, and a red flag pops up when one gets a bite. Tap the HOLE buttons to switch.</li>
+        <li>Big fish can <span style="color:var(--gold)">snap a weak line</span> and get away. Your starter line holds 15 lb. Buy stronger line in the Gear Shop.</li>
+        <li>Lake passes take you to <span style="color:var(--gold)">Northern Lake</span> and <span style="color:var(--gold)">Glacier Lake</span>, with new fish to find.</li>
+        <li>Each lake hides one <span style="color:var(--gold)">legendary fish</span>. Read the clues in the Fish Journal.</li>
+        <li>Any fish can rarely come up <span style="color:var(--gold)">golden</span> (worth 10 times as much) or <span style="color:var(--gold)">albino</span> (5 times).</li>
+        <li>Every month is a new <span style="color:var(--gold)">season</span> with its own leaderboard. The top 3 win coins and an exclusive Champion cap.</li>
         <li>Check MENU every day for a <span style="color:var(--gold)">daily challenge</span>, and earn coins from <span style="color:var(--gold)">achievements</span>.</li>
         <li>Spend leftover coins in the <span style="color:var(--gold)">Clothes Shop</span> to dress up your angler.</li>
         <li>Bigger bait gets fewer bites, but a fish that bites late in a long wait can be huge.</li>
@@ -623,19 +660,40 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
 
 /* LOGIC:START */
 var SPECIES=[
- {id:'bluegill',name:'Bluegill',min:0.2,max:2,k:11,rate:6,minWait:0,maxWait:120,spots:{shallows:5,weedline:2,deep:0},baits:{worm:4,minnow:0.15}},
- {id:'perch',name:'Yellow perch',min:0.3,max:2.5,k:12,rate:6,minWait:0,maxWait:240,spots:{shallows:4,weedline:4,deep:1},baits:{worm:4,minnow:0.4,cut:0.3}},
- {id:'crappie',name:'Black crappie',min:0.5,max:4,k:12.5,rate:6,minWait:1,maxWait:480,spots:{shallows:2,weedline:4,deep:1},baits:{worm:2.5,minnow:1}},
- {id:'largemouth',name:'Largemouth bass',min:1,max:16,k:11.6,rate:10,minWait:15,maxWait:900,spots:{shallows:2,weedline:5,deep:2},baits:{minnow:4,cut:0.5,sucker:0.5}},
- {id:'smallmouth',name:'Smallmouth bass',min:1,max:9,k:12,rate:11,minWait:20,maxWait:1200,spots:{shallows:0.5,weedline:2,deep:4},baits:{minnow:3,cut:0.5,sucker:0.3}},
- {id:'walleye',name:'Walleye',min:2,max:18,k:14,rate:12,minWait:30,maxWait:1500,spots:{shallows:0.5,weedline:2,deep:5},baits:{minnow:5,cut:1,sucker:0.5}},
- {id:'channel',name:'Channel catfish',min:2,max:40,k:14.4,rate:5,minWait:30,maxWait:0,spots:{shallows:1,weedline:2,deep:4},baits:{minnow:0.5,cut:6,sucker:1}},
- {id:'pike',name:'Northern pike',min:3,max:35,k:15.8,rate:6,minWait:60,maxWait:0,spots:{shallows:0.5,weedline:5,deep:2},baits:{minnow:4,cut:0.5,sucker:3}},
- {id:'laketrout',name:'Lake trout',min:4,max:45,k:14.4,rate:8,minWait:120,maxWait:0,spots:{shallows:0,weedline:0.5,deep:6},baits:{minnow:2,cut:3,sucker:2}},
- {id:'muskie',name:'Muskellunge',min:10,max:60,k:16.2,rate:10,minWait:240,maxWait:0,spots:{shallows:0,weedline:3,deep:4},baits:{sucker:6}},
- {id:'flathead',name:'Flathead catfish',min:15,max:100,k:14.5,rate:5,minWait:360,maxWait:0,spots:{shallows:0,weedline:1,deep:5},baits:{cut:2,sucker:4}},
- {id:'sturgeon',name:'Lake sturgeon',min:30,max:150,k:16.3,rate:8,minWait:720,maxWait:0,spots:{shallows:0,weedline:0,deep:5},baits:{cut:1.5,sucker:3}}
+ {id:'bluegill',name:'Bluegill',min:0.2,max:2,k:11,rate:6,minWait:0,maxWait:120,lakes:{pine:{shallows:5,weedline:2}},baits:{worm:4,minnow:0.15}},
+ {id:'perch',name:'Yellow perch',min:0.3,max:2.5,k:12,rate:6,minWait:0,maxWait:240,lakes:{pine:{shallows:4,weedline:4,deep:1},northern:{shallows:4,weedline:2,deep:0.5}},baits:{worm:4,minnow:0.4,cut:0.3}},
+ {id:'crappie',name:'Black crappie',min:0.5,max:4,k:12.5,rate:6,minWait:1,maxWait:480,lakes:{pine:{shallows:2,weedline:4,deep:1}},baits:{worm:2.5,minnow:1}},
+ {id:'cisco',name:'Cisco',min:0.3,max:5,k:12,rate:7,minWait:1,maxWait:300,lakes:{northern:{shallows:3,weedline:3,deep:2}},baits:{worm:3,minnow:1}},
+ {id:'kokanee',name:'Kokanee salmon',min:0.5,max:5,k:12.7,rate:8,minWait:2,maxWait:360,lakes:{glacier:{shallows:4,weedline:3,deep:1}},baits:{worm:3,minnow:1}},
+ {id:'largemouth',name:'Largemouth bass',min:1,max:16,k:11.6,rate:10,minWait:15,maxWait:900,lakes:{pine:{shallows:2,weedline:5,deep:2}},baits:{minnow:4,cut:0.5,sucker:0.5}},
+ {id:'smallmouth',name:'Smallmouth bass',min:1,max:9,k:12,rate:11,minWait:20,maxWait:1200,lakes:{pine:{shallows:0.5,weedline:2,deep:4}},baits:{minnow:3,cut:0.5,sucker:0.3}},
+ {id:'walleye',name:'Walleye',min:2,max:18,k:14,rate:12,minWait:30,maxWait:1500,lakes:{pine:{shallows:0.5,weedline:2,deep:5},northern:{weedline:2,deep:4}},baits:{minnow:5,cut:1,sucker:0.5}},
+ {id:'sauger',name:'Sauger',min:0.5,max:8,k:13.2,rate:12,minWait:20,maxWait:1500,lakes:{northern:{weedline:3,deep:3}},baits:{minnow:5,cut:1}},
+ {id:'whitefish',name:'Lake whitefish',min:1,max:14,k:12.5,rate:9,minWait:20,maxWait:0,lakes:{northern:{shallows:1,weedline:3,deep:4},glacier:{shallows:2,weedline:2,deep:2}},baits:{worm:1.5,minnow:3}},
+ {id:'rainbow',name:'Rainbow trout',min:1,max:25,k:13,rate:10,minWait:20,maxWait:0,lakes:{northern:{shallows:3,weedline:3,deep:1}},baits:{worm:1,minnow:4,cut:0.5}},
+ {id:'splake',name:'Splake',min:1,max:20,k:13.5,rate:10,minWait:30,maxWait:0,lakes:{glacier:{shallows:2,weedline:4,deep:2}},baits:{worm:0.5,minnow:4,cut:1}},
+ {id:'channel',name:'Channel catfish',min:2,max:40,k:14.4,rate:5,minWait:30,maxWait:0,lakes:{pine:{shallows:1,weedline:2,deep:4}},baits:{minnow:0.5,cut:6,sucker:1}},
+ {id:'pike',name:'Northern pike',min:3,max:35,k:15.8,rate:6,minWait:60,maxWait:0,lakes:{pine:{shallows:0.5,weedline:5,deep:2},northern:{shallows:1,weedline:5,deep:2}},baits:{minnow:4,cut:0.5,sucker:3}},
+ {id:'burbot',name:'Burbot',min:1,max:20,k:16,rate:7,minWait:60,maxWait:0,lakes:{northern:{weedline:1,deep:5},glacier:{deep:3}},baits:{minnow:2,cut:5,sucker:3}},
+ {id:'char',name:'Arctic char',min:1,max:25,k:14,rate:12,minWait:60,maxWait:0,lakes:{glacier:{weedline:2,deep:5}},baits:{minnow:4,cut:2,sucker:1}},
+ {id:'laketrout',name:'Lake trout',min:4,max:45,k:14.4,rate:8,minWait:120,maxWait:0,lakes:{pine:{weedline:0.5,deep:6},northern:{deep:3},glacier:{weedline:1,deep:6}},baits:{minnow:2,cut:3,sucker:2}},
+ {id:'muskie',name:'Muskellunge',min:10,max:60,k:16.2,rate:10,minWait:240,maxWait:0,lakes:{pine:{weedline:3,deep:4}},baits:{sucker:6}},
+ {id:'flathead',name:'Flathead catfish',min:15,max:100,k:14.5,rate:5,minWait:360,maxWait:0,lakes:{pine:{weedline:1,deep:5}},baits:{cut:2,sucker:4}},
+ {id:'sturgeon',name:'Lake sturgeon',min:30,max:150,k:16.3,rate:8,minWait:720,maxWait:0,lakes:{pine:{deep:5}},baits:{cut:1.5,sucker:3}},
+ {id:'oldwhiskers',name:'Old Whiskers',legend:true,min:90,max:130,k:14.5,rate:40,minWait:360,maxWait:0,lakes:{pine:{deep:8}},baits:{cut:0.5,sucker:1},
+  hint:'A giant catfish said to live in the Deep Hole of Pine Lake. Old-timers say it only bites at night, after a long wait, on suckers or cut bait.'},
+ {id:'ironjaw',name:'Old Ironjaw',legend:true,min:45,max:65,k:15.8,rate:40,minWait:360,maxWait:0,lakes:{northern:{weedline:1.6,deep:0.8}},baits:{sucker:1},
+  hint:'A huge iron-gray pike that haunts the Weedline of Northern Lake. It only strikes suckers at dusk, after a long wait.'},
+ {id:'paleghost',name:'The Pale Ghost',legend:true,min:60,max:90,k:14.4,rate:40,minWait:480,maxWait:0,lakes:{glacier:{deep:3}},baits:{sucker:1,cut:0.5},
+  hint:'A ghost-white lake trout from the deepest water of Glacier Lake. Nobody has seen it except at dawn, after a wait of many hours.'}
 ];
+var LAKES=[
+ {id:'pine',name:'Pine Lake',price:0,desc:'Your home lake. Panfish, bass, pike, catfish and sturgeon.'},
+ {id:'northern',name:'Northern Lake',price:2500,desc:'Cold and wild. Burbot, whitefish, rainbow trout, sauger and cisco.'},
+ {id:'glacier',name:'Glacier Lake',price:10000,desc:'Clear, icy water under the mountains. Arctic char, splake, kokanee and giant lake trout.'}
+];
+var LAKE_BY_ID={}; LAKES.forEach(function(l){LAKE_BY_ID[l.id]=l;});
+function spW(sp,lake,spot){ var l=sp.lakes[lake||'pine']; return l?(l[spot]||0):0; }
 var SPOTS=[
  {id:'shallows',name:'Shallows',short:'SHALLOWS',desc:'Panfish and the odd bass',unlockH:0},
  {id:'weedline',name:'Weedline',short:'WEEDLINE',desc:'Bass, pike and muskie',unlockH:1},
@@ -659,6 +717,11 @@ function mulberry32(a){
 }
 /* Which part of the day it is, and how much each fish likes it. Dawn and dusk are prime time for trophies. */
 var ACT={
+ cisco:{dawn:1.2,day:0.8,dusk:2,night:0.8}, kokanee:{dawn:1.5,day:1.6,dusk:0.8,night:0.2},
+ sauger:{dawn:1.2,day:0.4,dusk:2.2,night:2.2}, whitefish:{dawn:1.8,day:1.4,dusk:0.8,night:0.4},
+ rainbow:{dawn:1.6,day:1.4,dusk:1,night:0.4}, splake:{dawn:1.5,day:1.5,dusk:1,night:0.4},
+ burbot:{dawn:0.8,day:0.3,dusk:1.2,night:3}, char:{dawn:2,day:1.3,dusk:0.8,night:0.4},
+ oldwhiskers:{dawn:0,day:0,dusk:0,night:1}, ironjaw:{dawn:0,day:0,dusk:1,night:0}, paleghost:{dawn:1,day:0,dusk:0,night:0},
  bluegill:{dawn:1.2,day:1.5,dusk:1,night:0.3}, perch:{dawn:1.5,day:1.3,dusk:1,night:0.3},
  crappie:{dawn:2,day:0.6,dusk:2.2,night:1}, largemouth:{dawn:2,day:0.8,dusk:2,night:0.6},
  smallmouth:{dawn:1.2,day:1.5,dusk:1,night:0.4}, walleye:{dawn:1.5,day:0.4,dusk:2.5,night:2.5},
@@ -668,10 +731,10 @@ var ACT={
 };
 var PERIOD_NAME={dawn:'Dawn',day:'Day',dusk:'Dusk',night:'Night'};
 function periodOf(h){ if(h==null) return null; h=((h%24)+24)%24; return h>=5&&h<8?'dawn':h>=8&&h<17?'day':h>=17&&h<20?'dusk':'night'; }
-function speciesWeights(spot,bait,minutes,hour){
+function speciesWeights(spot,bait,minutes,hour,lake){
   var per=periodOf(hour);
   return SPECIES.map(function(sp){
-    var w=(sp.spots[spot]||0)*(sp.baits[bait]||0);
+    var w=spW(sp,lake,spot)*(sp.baits[bait]||0);
     if(minutes<sp.minWait) w=0;
     else if(sp.maxWait && minutes>sp.maxWait) w*=Math.exp(-(minutes-sp.maxWait)/sp.maxWait);
     if(per&&ACT[sp.id]) w*=ACT[sp.id][per];
@@ -679,9 +742,9 @@ function speciesWeights(spot,bait,minutes,hour){
   });
 }
 function sizeCap(minutes,bait){ var b=BAIT_BY_ID[bait]; return (0.12+0.88*(1-Math.exp(-minutes/b.tau)))*b.capMax; }
-function rollCatch(seed,spot,bait,minutes,hour){
+function rollCatch(seed,spot,bait,minutes,hour,lake){
   var rnd=mulberry32(seed>>>0);
-  var list=speciesWeights(spot,bait,minutes,hour);
+  var list=speciesWeights(spot,bait,minutes,hour,lake);
   var total=0; list.forEach(function(x){total+=x.w;});
   if(total<=0) return null;
   var pick=rnd()*total, chosen=null;
@@ -697,16 +760,22 @@ function rollCatch(seed,spot,bait,minutes,hour){
   var f=bonus ? cap*(0.75+0.25*v) : cap*Math.pow(u,1.25);
   var lb=Math.round((sp.min+(sp.max-sp.min)*f)*16)/16;
   var inches=Math.round(sp.k*Math.cbrt(lb)*4)/4;
-  return {id:sp.id,lb:lb,inches:inches,bonus:bonus};
+  /* Rare colors, from their own random stream so they never change which fish bites. */
+  var vr=mulberry32((seed^0xC0FFEE)>>>0)(), variant=null;
+  if(!sp.legend){ if(vr<0.002) variant='golden'; else if(vr<0.0053) variant='albino'; }
+  return {id:sp.id,lb:lb,inches:inches,bonus:bonus,variant:variant};
 }
-function fishValue(id,lb){ var sp=SPECIES.filter(function(s){return s.id===id;})[0]; return Math.max(1,Math.round(lb*sp.rate)); }
+var VARIANT_MULT={golden:10,albino:5};
+function fishValue(id,lb,variant){ var sp=SPECIES.filter(function(s){return s.id===id;})[0]; return Math.max(1,Math.round(lb*sp.rate*(VARIANT_MULT[variant]||1))); }
+/* A fish heavier than the line's strength snaps it 60% of the time. */
+function snaps(seed,lb,test){ if(!test||lb<=test) return false; return mulberry32((seed^0x5A5A17)>>>0)()<0.6; }
 /* When the first fish bites, in fishing minutes. Random per cast, decided by the cast's seed. */
-function biteMinutes(seed,spot,bait){
+function biteMinutes(seed,spot,bait,lake,heat){
   var b=BAIT_BY_ID[bait], r=mulberry32((seed^0x51ED27)>>>0)();
   var first=Infinity;
-  SPECIES.forEach(function(sp){ if((sp.spots[spot]||0)*(sp.baits[bait]||0)>0) first=Math.min(first,sp.minWait); });
+  SPECIES.forEach(function(sp){ if(!sp.legend&&spW(sp,lake,spot)*(sp.baits[bait]||0)>0) first=Math.min(first,sp.minWait); });
   if(first===Infinity) return Infinity;
-  return Math.max(b.minBite,first)-Math.log(1-r)*b.biteMean;
+  return Math.max(b.minBite,first)-Math.log(1-r)*b.biteMean*(heat?0.75:1);
 }
 function nudgeCount(seed,minutes,bait){
   var r=mulberry32((seed^0x9E3779B9)>>>0)();
@@ -745,6 +814,7 @@ var ITEMS=[
  {id:'hat_cap',slot:'hat',name:'Ball cap',price:80,hat:'cap',c:{R:'#1F8A5A',r:'#145C3C'}},
  {id:'hat_trapper',slot:'hat',name:'Trapper hat',price:250,hat:'trapper',c:{R:'#7A4E2A',C:'#EADFC8'}},
  {id:'hat_top',slot:'hat',name:'Top hat',price:1200,hat:'top',c:{T:'#1A1A22',R:'#B0303A'}},
+ {id:'hat_champ',slot:'hat',name:'Champion cap',price:0,prize:true,hat:'champ',c:{B:'#2F5FD0',b:'#1E3E8A',Y:'#FFC94A'}},
  {id:'hat_crown',slot:'hat',name:'Gold crown',price:5000,hat:'crown',c:{Y:'#FFC94A',y:'#C98A12',J:'#E5484D',U:'#3FA7F0'}},
  {id:'coat_orange',slot:'coat',name:'Hunter orange',price:0,c:{O:'#F07A2A',o:'#B5531A'}},
  {id:'coat_red',slot:'coat',name:'Red parka',price:40,c:{O:'#D93A3A',o:'#962424'}},
@@ -774,8 +844,8 @@ var DEFAULT_OUTFIT={hat:'hat_red',coat:'coat_orange',pants:'pants_navy',boots:'b
 var SAVE_KEY='slowbite.v1', PRACTICE_SPEED=600;
 var storageOK=true, state=null, armedUntil=0, toastTimer=0;
 function $(id){return document.getElementById(id);}
-function freshState(){ return {v:1,spot:'shallows',bait:'worm',practice:false,line:null,fishedSec:0,total:0,records:{},catches:[],last:null,
-  coins:0,earned:0,ownedBaits:['worm'],bucket:[],uid:0,tut:0,counts:{},flags:{},spent:0,dailyDone:0,ach:[],daily:null,lastSeen:0,outfit:Object.assign({},DEFAULT_OUTFIT),ownedItems:ITEMS.filter(function(i){return i.price===0;}).map(function(i){return i.id;})}; }
+function freshState(){ return bindState({v:1,holes:[{lake:'pine',spot:'shallows',bait:'worm',line:null}],sel:0,lakes:['pine'],lineLvl:0,finder:false,heater:false,variants:{},claims:{},snaps:0,practice:false,fishedSec:0,total:0,records:{},catches:[],last:null,
+  coins:0,earned:0,ownedBaits:['worm'],bucket:[],uid:0,tut:0,counts:{},flags:{},spent:0,dailyDone:0,ach:[],daily:null,lastSeen:0,outfit:Object.assign({},DEFAULT_OUTFIT),ownedItems:ITEMS.filter(function(i){return i.price===0&&!i.prize;}).map(function(i){return i.id;})}); }
 function upgrade(d){
   var s=Object.assign(freshState(),d);
   if(d.tut==null) s.tut=(d.total>0)?99:0;
@@ -786,8 +856,23 @@ function upgrade(d){
   if(!Array.isArray(s.ownedBaits)||s.ownedBaits.indexOf('worm')<0) s.ownedBaits=['worm'];
   if(!Array.isArray(s.bucket)) s.bucket=[];
   s.outfit=Object.assign({},DEFAULT_OUTFIT,s.outfit||{});
-  var free=ITEMS.filter(function(i){return i.price===0;}).map(function(i){return i.id;});
+  var free=ITEMS.filter(function(i){return i.price===0&&!i.prize;}).map(function(i){return i.id;});
   s.ownedItems=Array.from(new Set((s.ownedItems||[]).concat(free)));
+  if(!Array.isArray(s.lakes)||s.lakes.indexOf('pine')<0) s.lakes=['pine'];
+  if(!s.variants||typeof s.variants!=='object') s.variants={};
+  if(!s.claims||typeof s.claims!=='object') s.claims={};
+  return bindState(s);
+}
+/* Each hole has its own lake, spot, bait and line. state.line/spot/bait/lake always mean the selected hole. */
+var LINE_TESTS=[15,30,60,150];
+function bindState(s){
+  if(!Array.isArray(s.holes)||!s.holes.length) s.holes=[{lake:'pine',spot:'shallows',bait:'worm',line:null}];
+  s.holes=s.holes.slice(0,4);
+  s.holes.forEach(function(h){ h.lake=h.lake||'pine'; h.spot=h.spot||'shallows'; h.bait=h.bait||'worm'; if(h.line===undefined) h.line=null; if(h.line&&!h.line.lake) h.line.lake=h.lake; });
+  if(!(s.sel>=0&&s.sel<s.holes.length)) s.sel=0;
+  ['line','spot','bait','lake'].forEach(function(k){
+    Object.defineProperty(s,k,{configurable:true,enumerable:false,get:function(){return this.holes[this.sel][k];},set:function(v){this.holes[this.sel][k]=v;}});
+  });
   return s;
 }
 function load(){
@@ -807,10 +892,16 @@ function overallBest(){
 }
 function owns(b){ return state.ownedBaits.indexOf(b)>=0; }
 function fixSelection(){
-  var sp=SPOT_BY_ID[state.spot];
-  if(!sp||(!state.practice && state.fishedSec/3600<sp.unlockH)) state.spot='shallows';
-  if(!BAIT_BY_ID[state.bait]||!owns(state.bait)) state.bait='worm';
+  state.holes.forEach(function(h){
+    if(!LAKE_BY_ID[h.lake]||state.lakes.indexOf(h.lake)<0) h.lake='pine';
+    var sp=SPOT_BY_ID[h.spot];
+    if(!sp||(!state.practice && state.fishedSec/3600<sp.unlockH)) h.spot='shallows';
+    if(!BAIT_BY_ID[h.bait]||!owns(h.bait)) h.bait='worm';
+  });
 }
+function lakeShort(id){ return {pine:'PINE',northern:'NORTHERN',glacier:'GLACIER'}[id||'pine']; }
+function normalCount(){ return SPECIES.filter(function(sp){return !sp.legend;}).length; }
+function anyHooked(){ return state.holes.some(function(h){ return h.line&&hooked(h.line); }); }
 function toast(msg,ms,good){
   var t=$('toast'); t.textContent=msg; t.className='toast'+(good?' good':''); t.hidden=false;
   clearTimeout(toastTimer); toastTimer=setTimeout(function(){t.hidden=true;},ms||2600);
@@ -818,7 +909,7 @@ function toast(msg,ms,good){
 function hash(n){var x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);}
 function nowHour(){ var d=new Date(); return d.getHours()+d.getMinutes()/60; }
 function stormNow(){ return hash(Math.floor(Date.now()/3600000)*1.37+11)<0.12; }
-function activeNow(per,n){ return SPECIES.slice().sort(function(a,b){return ACT[b.id][per]-ACT[a.id][per];}).slice(0,n||3); }
+function activeNow(per,n){ var lk=(state&&state.lake)||'pine'; return SPECIES.filter(function(sp){ return !sp.legend&&sp.lakes[lk]; }).sort(function(a,b){return ACT[b.id][per]-ACT[a.id][per];}).slice(0,n||3); }
 function todLine(){
   var per=periodOf(nowHour()), prime=per==='dawn'||per==='dusk';
   var names=activeNow(per,3).map(function(sp){return sp.name.toLowerCase();});
@@ -840,8 +931,20 @@ var LOOK={
  laketrout:{b:'#4A5E66',d:'#33434A',bel:'#F0E8DA',fin:'#C8703A',spot:'#D8E0E0',pat:'lightspots',ht:.27},
  muskie:{b:'#A4A06A',d:'#76734A',bel:'#EEEBD2',fin:'#8C5A30',spot:'#5B5A30',pat:'bars',ht:.2},
  flathead:{b:'#8A7240',d:'#5E4E2A',bel:'#E8DDB8',fin:'#6E5A30',spot:'#4A3A1E',pat:'mottle',ht:.27,whisk:1},
- sturgeon:{b:'#6B6E62',d:'#4A4C44',bel:'#CFCFC0',fin:'#5A5C52',spot:'#C9CBB8',pat:'scutes',ht:.19,snout:1,whisk:1}
+ sturgeon:{b:'#6B6E62',d:'#4A4C44',bel:'#CFCFC0',fin:'#5A5C52',spot:'#C9CBB8',pat:'scutes',ht:.19,snout:1,whisk:1},
+ cisco:{b:'#8FA8BC',d:'#5A7488',bel:'#EEF2F4',fin:'#7A90A0',spot:'#5A7488',pat:'none',ht:.27},
+ kokanee:{b:'#7E9AB2',d:'#4E6A82',bel:'#F0F2F4',fin:'#6E8AA2',spot:'#3E5A72',pat:'spots',ht:.29},
+ sauger:{b:'#9C8A5A',d:'#5E5032',bel:'#EEE6CC',fin:'#7E6E44',spot:'#3E3420',pat:'mottle',ht:.26,bigEye:1},
+ whitefish:{b:'#AEB8C0',d:'#7C8890',bel:'#EEF2F4',fin:'#8C989F',spot:'#7C8890',pat:'none',ht:.3},
+ rainbow:{b:'#7E9A5E',d:'#5A7040',bel:'#EEE8E0',fin:'#7E8A60',spot:'#2E3A22',band:'#E07A8A',pat:'spots',ht:.28},
+ splake:{b:'#4E6252',d:'#34463A',bel:'#EAD9B8',fin:'#D87A4A',spot:'#E8E4C8',pat:'lightspots',ht:.28},
+ burbot:{b:'#6B5A3A',d:'#4A3E26',bel:'#D9CFA8',fin:'#5A4A2E',spot:'#3A2E1A',pat:'mottle',ht:.16,whisk:1},
+ char:{b:'#5E6E7A',d:'#3E4C56',bel:'#E06A3A',fin:'#E8E4DC',spot:'#F2D8C8',pat:'lightspots',ht:.28},
+ oldwhiskers:{b:'#3E3A36',d:'#24221F',bel:'#BDB4A0',fin:'#2E2B28',spot:'#8E8676',pat:'mottle',ht:.29,whisk:1},
+ ironjaw:{b:'#4A5056',d:'#2C3036',bel:'#C8CCD0',fin:'#6A3A2A',spot:'#D8B04A',pat:'lightspots',ht:.2},
+ paleghost:{b:'#DDE6EC',d:'#AFC0CC',bel:'#F8FBFC',fin:'#C8D8E4',spot:'#FFFFFF',pat:'lightspots',ht:.27}
 };
+var VARIANT_PAL={golden:{b:'#E8B830',d:'#B88A18',bel:'#FFE9A0',fin:'#D89A20',spot:'#FFF2C0'},albino:{b:'#F2EEEA',d:'#D8D0CC',bel:'#FFFFFF',fin:'#E8DCD8',spot:'#E0D6D2',eye:'#D04A5A'}};
 var spriteCache={};
 function fishGrid(id,L){
   var lk=LOOK[id];
@@ -878,6 +981,7 @@ function fishGrid(id,L){
           else if(lk.pat==='lightspots'){ if(h2<0.2) c='spot'; }
           else if(lk.pat==='mottle'){ if(h2<0.3) c='d'; else if(h2>0.9) c='spot'; }
           else if(lk.pat==='scutes'){ if((y2===top+1 && x%3===0)||(y2===cy && x%4===0)) c='spot'; }
+          if(lk.band&&Math.abs(y2-cy)<=Math.max(0,Math.round(half*0.2))) c='band';
         }
         if(Math.abs(u-0.72)<0.5/Math.max(1,nose-bodyStart) && rel>0.15 && rel<0.85 && L>14) c='d';
         set(x,y2,c);
@@ -899,11 +1003,12 @@ function fishGrid(id,L){
   if(lk.whisk){ set(nose,cy+2,'out'); set(nose-1,cy+3,'out'); if(L>16){ set(nose-2,cy+4,'out'); set(nose+1,cy+2,'out'); } }
   return g;
 }
-function fishCanvas(id,L,shadow){
-  var key=id+'|'+L+'|'+(shadow||0);
+function fishCanvas(id,L,shadow,variant){
+  var key=id+'|'+L+'|'+(shadow||0)+'|'+(variant||'');
   if(spriteCache[key]) return spriteCache[key];
   var g=fishGrid(id,L), lk=LOOK[id];
-  var pal={b:lk.b,d:lk.d,bel:lk.bel,fin:lk.fin,spot:lk.spot,out:'#0B1420',eye:'#0B0F14',hl:'#F4F4E8'};
+  var pal=Object.assign({b:lk.b,d:lk.d,bel:lk.bel,fin:lk.fin,spot:lk.spot,band:lk.band||lk.spot,out:'#0B1420',eye:'#0B0F14',hl:'#F4F4E8'},VARIANT_PAL[variant]||{});
+  if(variant==='albino') pal.band='#F4C8D0';
   var c=document.createElement('canvas'); c.width=g[0].length; c.height=g.length;
   var x2=c.getContext('2d');
   for(var y=0;y<g.length;y++) for(var x=0;x<g[0].length;x++){
@@ -912,11 +1017,11 @@ function fishCanvas(id,L,shadow){
   }
   spriteCache[key]=c; return c;
 }
-function fishImg(id,L,shadow,scale){
-  var src=fishCanvas(id,L,shadow), c=document.createElement('canvas');
+function fishImg(id,L,shadow,scale,variant){
+  var src=fishCanvas(id,L,shadow,variant), c=document.createElement('canvas');
   c.width=src.width; c.height=src.height; c.className='px'; c.getContext('2d').drawImage(src,0,0);
   c.style.width=(src.width*scale)+'px'; c.style.height=(src.height*scale)+'px';
-  c.setAttribute('role','img'); c.setAttribute('aria-label',shadow?'Uncaught fish silhouette':SP_BY_ID[id].name);
+  c.setAttribute('role','img'); c.setAttribute('aria-label',shadow?'Uncaught fish silhouette':(variant?variant+' ':'')+SP_BY_ID[id].name);
   return c;
 }
 function pix(v,x,y){ if(typeof v==='string') return v; if(v.chk) return v.chk[(x+y)&1]; return v.cam[Math.floor(hash(x*7.13+y*3.31)*v.cam.length)]; }
@@ -943,6 +1048,10 @@ var ICONS={
   medal:{rows:["..rbbr..","...rb...","..YYYY..",".YyYYyY.",".YYYYYY.",".YyYYyY.","..YYYY..","........"],map:{r:'#E5484D',b:'#3FA7F0',Y:'#FFC94A',y:'#C98A12'}},
   star:{rows:["...Y....","...Y....","YYYYYYY.",".YYYYY..","..YYY...",".YY.YY..","YY...YY.","........"],map:{Y:'#FFC94A'}},
   disk:{rows:["BBBBBBB.","BwwwwwBB","BwwwwwBB","BBBBBBBB","BBkkkkBB","BBkBkkBB","BBkkkkBB","........"],map:{B:'#3A78D8',w:'#EAF5FF',k:'#14294C'}},
+  tipup:{rows:["....rr..","....rrr.","....r...","....W...","....W...","WWWWWWWW","...BB...","..BBBB.."],map:{r:'#E5484D',W:'#C9A06A',B:'#14294C'}},
+  spool:{rows:["........",".kkkkkk.","..wwww..","..wwww..","..wwww..",".kkkkkk.","........","........"],map:{k:'#5A6476',w:'#EAF5FF'}},
+  heater:{rows:["..kkkk..",".kRRRRk.",".kRYYRk.",".kRYYRk.",".kRRRRk.",".kkkkkk.",".k....k.","........"],map:{k:'#2A2E38',R:'#E5484D',Y:'#FFC94A'}},
+  mountain:{rows:["........","...W....","..WWW...","..GWG.W.",".GGGGWWW","GGGGGGGG","BBBBBBBB","........"],map:{W:'#F4F9FC',G:'#7A8EA2',B:'#3FA0B8'}},
   help:{rows:["..WWWW..",".WW..WW.",".....WW.","....WW..","...WW...","...WW...","........","...WW..."],map:{W:'#EAF5FF'}}
 };
 var HAT_ROWS={
@@ -950,7 +1059,8 @@ var HAT_ROWS={
   cap:["............","....RRRR....","...RRRRRR...","...RRRRRRrr."],
   trapper:["....RRRR....","...RRRRRR...","..RRRRRRRR..","..CCCCCCCC.."],
   top:["...TTTTT....","...TTTTT....","...RRRRR....","..TTTTTTT..."],
-  crown:["............","...Y.Y.Y.Y..","...YYYYYYY..","...yJyUyJy.."]
+  crown:["............","...Y.Y.Y.Y..","...YYYYYYY..","...yJyUyJy.."],
+  champ:["............","....BBBB....","...BBYYBB...","...BBBBBBbb."]
 };
 var BODY=[
  "...SSSSSE...",
@@ -998,6 +1108,12 @@ function busyLine(){ return !!state.line||!!(fx&&!fx.out); }
 function renderTackle(){
   var hours=state.fishedSec/3600, busy=busyLine();
   $('tackleNote').hidden=!busy;
+  $('tackleTitle').textContent=state.holes.length>1?'TACKLE BOX: HOLE '+(state.sel+1):'TACKLE BOX';
+  $('lakesSeg').innerHTML=LAKES.map(function(l){
+    var own=state.lakes.indexOf(l.id)>=0;
+    return '<button type="button" data-lake="'+l.id+'" aria-pressed="'+(state.lake===l.id)+'">'+lakeShort(l.id)+'<span class="s">'+(own?'OPEN':'$'+money(l.price))+'</span></button>';
+  }).join('');
+  $('lakeDesc').textContent=LAKE_BY_ID[state.lake].name;
   $('spots').innerHTML=SPOTS.map(function(s){
     var locked=!state.practice && hours<s.unlockH;
     var sub=locked?'LOCKED '+fmtDuration((s.unlockH*3600-state.fishedSec)/60).toUpperCase():'OPEN';
@@ -1019,10 +1135,36 @@ function renderTackle(){
 function renderLoadout(){
   var lo=$('loadout'); lo.innerHTML='';
   lo.appendChild(spriteCanvas(BAIT_ART[state.bait].rows,BAIT_ART[state.bait].map));
-  var t=document.createElement('span'); t.className='lo-t'; t.textContent=SPOT_BY_ID[state.spot].short+' / '+BAIT_BY_ID[state.bait].name.toUpperCase()+(state.practice?' / FAST':''); lo.appendChild(t);
+  var t=document.createElement('span'); t.className='lo-t'; t.textContent=(state.lakes.length>1?lakeShort(state.lake)+' / ':'')+SPOT_BY_ID[state.spot].short+' / '+BAIT_BY_ID[state.bait].name.toUpperCase()+(state.practice?' / FAST':''); lo.appendChild(t);
   var c=document.createElement('span'); c.className='lo-c'; c.textContent='CHANGE'; lo.appendChild(c);
 }
+function holeStatus(h,i){
+  if(fx&&!fx.out&&fx.hole===i) return {t:'REEL',on:false};
+  var line=h.line; if(!line) return {t:'DRY',on:false};
+  if(hooked(line)) return {t:'BITE!',on:true};
+  return {t:fmtDuration(effMinutes(line,Date.now())),on:false};
+}
+function renderHoles(){
+  var box=$('holes'), n=state.holes.length;
+  box.hidden=n<2; if(n<2) return;
+  if(box.children.length!==n){
+    box.innerHTML=state.holes.map(function(h,i){ return '<button type="button" class="hole-chip" data-hole="'+i+'"><span class="hn">HOLE '+(i+1)+'</span><span class="hs"></span></button>'; }).join('');
+  }
+  state.holes.forEach(function(h,i){
+    var b=box.children[i], st=holeStatus(h,i);
+    b.setAttribute('aria-pressed',String(i===state.sel)); b.classList.toggle('on',st.on&&i!==state.sel||st.on&&!(fx&&!fx.out));
+    var hs=b.querySelector('.hs'); if(hs.textContent!==st.t) hs.textContent=st.t;
+    b.setAttribute('aria-label','Hole '+(i+1)+', '+lakeShort(h.line?h.line.lake:h.lake).toLowerCase()+' lake, '+st.t.toLowerCase());
+  });
+}
+function selectHole(i){
+  if(i===state.sel||i<0||i>=state.holes.length) return;
+  if(fx&&!fx.out){ toast('Finish this catch first.'); return; }
+  if(fx) fx=null;
+  state.sel=i; armedUntil=0; fishes=[]; save(); renderAll();
+}
 function renderPanel(){
+  renderHoles();
   var card=!!(fx&&fx.card&&!fx.out), busy=!!(fx&&!fx.out);
   $('catchUI').hidden=!card;
   $('go').hidden=card;
@@ -1032,15 +1174,19 @@ function renderPanel(){
 function renderSonar(){
   var line=state.line; if(!line) return;
   var T=effMinutes(line,Date.now()), info=lineInfo(line), on=T>=info.bite, bt=BAIT_BY_ID[line.bait];
-  $('sonarWhere').textContent=(SPOT_BY_ID[line.spot].short+' / '+bt.name.toUpperCase())+' / '+PERIOD_NAME[periodOf(nowHour())].toUpperCase()+(line.speed>1?' / FAST':'');
+  $('sonarWhere').textContent=((state.lakes.length>1?lakeShort(line.lake)+' / ':'')+SPOT_BY_ID[line.spot].short+' / '+bt.name.toUpperCase())+' / '+PERIOD_NAME[periodOf(nowHour())].toUpperCase()+(line.speed>1?' / FAST':'');
   var cap=Math.round(sizeCap(Math.min(T,info.bite),line.bait)*100);
   $('meterBar').style.setProperty('--w',cap+'%'); $('meterPct').textContent=cap+'%';
   if(on){
-    $('sonarList').innerHTML='<li class="s-msg" style="color:var(--gold)">!! FISH ON THE LINE !!</li><li class="s-msg">HOOKED AFTER '+fmtDuration(info.bite).toUpperCase()+'</li>';
-    $('sonarNext').innerHTML=feel(info.roll.lb)+' REEL IT IN!';
+    var rr=info.roll, risky=line.test&&rr.lb>line.test;
+    $('sonarList').innerHTML='<li class="s-msg" style="color:var(--gold)">!! FISH ON THE LINE !!</li>'+
+      (state.finder?'<li class="s-msg">PRO FINDER: <b style="font-weight:400;color:var(--gold)">'+fmtWeightText(rr.lb).toUpperCase()+' '+(rr.variant?rr.variant.toUpperCase()+' ':'')+SP_BY_ID[rr.id].name.toUpperCase()+'</b></li>':'<li class="s-msg">HOOKED AFTER '+fmtDuration(info.bite).toUpperCase()+'</li>')+
+      (risky?'<li class="s-msg" style="color:var(--red-hi)">THE LINE IS STRAINING! '+line.test+' LB LINE MIGHT SNAP.</li>':'');
+    $('sonarNext').innerHTML=(state.finder?'':feel(rr.lb)+' ')+'REEL IT IN!';
     return;
   }
-  var list=speciesWeights(line.spot,line.bait,T,nowHour()), total=0;
+  var list=speciesWeights(line.spot,line.bait,T,nowHour(),line.lake).filter(function(x){return !x.sp.legend;}), total=0;
+  var lurk=speciesWeights(line.spot,line.bait,T,nowHour(),line.lake).some(function(x){return x.sp.legend&&x.w>0;});
   list.forEach(function(x){total+=x.w;});
   var live=list.filter(function(x){return x.w>0;}).sort(function(a,b){return b.w-a.w;}).slice(0,4);
   $('sonarList').innerHTML='<li class="s-msg">BITE RATE: <b style="font-weight:400;color:var(--gold)">'+bt.rate+'</b></li>'+(live.length?live.map(function(x){
@@ -1048,15 +1194,16 @@ function renderSonar(){
     return '<li class="s-row"><span class="nm">'+x.sp.name.toUpperCase()+'</span><span class="track"><span class="blocks" style="--w:'+Math.max(4,pct).toFixed(0)+'%"></span></span><span class="p">'+(pct<1?'&lt;1':Math.round(pct))+'%</span></li>';
   }).join(''):'<li class="s-msg">NO FISH NEARBY YET...</li>');
   var next=null;
-  SPECIES.forEach(function(sp){ if((sp.spots[line.spot]||0)*(sp.baits[line.bait]||0)>0 && sp.minWait>T && (!next||sp.minWait<next.minWait)) next=sp; });
-  $('sonarNext').innerHTML=next?'NEXT ARRIVAL: <b>'+next.name.toUpperCase()+'</b> IN '+fmtDuration(next.minWait-T).toUpperCase():'WAITING FOR A BITE. <b>LATER BITES = BIGGER FISH.</b>';
+  SPECIES.forEach(function(sp){ if(!sp.legend&&spW(sp,line.lake,line.spot)*(sp.baits[line.bait]||0)>0 && sp.minWait>T && (!next||sp.minWait<next.minWait)) next=sp; });
+  $('sonarNext').innerHTML=lurk?'<b style="color:var(--gold)">SOMETHING HUGE IS LURKING DOWN THERE...</b>':next?'NEXT ARRIVAL: <b>'+next.name.toUpperCase()+'</b> IN '+fmtDuration(next.minWait-T).toUpperCase():'WAITING FOR A BITE. <b>LATER BITES = BIGGER FISH.</b>';
 }
 var infoCache={}, wasOn=false;
 function lineInfo(line){
-  var k=line.seed+'|'+line.spot+'|'+line.bait+'|'+line.castAt+'|'+line.speed;
-  if(!infoCache[k]){ var bt=biteMinutes(line.seed,line.spot,line.bait), bh=null;
+  var k=[line.seed,line.spot,line.bait,line.castAt,line.speed,line.lake||'pine',line.heat?1:0,line.test||0].join('|');
+  if(!infoCache[k]){ var bt=biteMinutes(line.seed,line.spot,line.bait,line.lake||'pine',line.heat), bh=null;
     if(isFinite(bt)){ var bd=new Date(line.castAt+bt*60000/line.speed); bh=bd.getHours()+bd.getMinutes()/60; }
-    infoCache[k]={bite:bt,hour:bh,at:line.castAt+bt*60000/line.speed,roll:isFinite(bt)?rollCatch(line.seed,line.spot,line.bait,bt,bh):null}; }
+    var roll=isFinite(bt)?rollCatch(line.seed,line.spot,line.bait,bt,bh,line.lake||'pine'):null;
+    infoCache[k]={bite:bt,hour:bh,at:line.castAt+bt*60000/line.speed,roll:roll,snap:!!(roll&&snaps(line.seed,roll.lb,line.test))}; }
   return infoCache[k];
 }
 function hooked(line,now){ return effMinutes(line,now||Date.now())>=lineInfo(line).bite; }
@@ -1081,7 +1228,10 @@ function tick(){
     return;
   }
   center.style.visibility='';
-  if(!line||!hooked(line,now)){ if(wasOn){ wasOn=false; try{ document.title='Below Zero'; }catch(e){} } }
+  renderHoles();
+  var otherOn=state.holes.some(function(h,i){ return i!==state.sel&&h.line&&hooked(h.line,now); });
+  try{ document.title=(anyHooked()?'FISH ON! | ':'')+'Below Zero'; }catch(e){}
+  if(!line||!hooked(line,now)){ if(wasOn){ wasOn=false; } }
   if(line){
     var eff=Math.max(0,(now-line.castAt)/1000)*line.speed, T=eff/60;
     clock.className='clock'; clock.textContent=fmtClock(eff);
@@ -1091,16 +1241,16 @@ function tick(){
       clock.className='clock ready'; clock.textContent='FISH ON!';
       st.textContent='Something bit! Reel it in.';
       go.className='go reel arm'; go.textContent='REEL IT IN!';
-      if(!wasOn){ wasOn=true; lastSonar=0; try{ document.title='FISH ON! | Below Zero'; }catch(e){} }
+      if(!wasOn){ wasOn=true; lastSonar=0; }
     }else{
-      st.innerHTML=(line.speed>1?'Fast time is on. ':'')+'<span class="n">Waiting for a bite...</span>'+(line.speed>1||line.bait==='worm'?'':' You can close this page.');
+      st.innerHTML=(otherOn?'<span class="n">A fish is on at another hole!</span> ':'')+(line.speed>1?'Fast time is on. ':'')+'<span class="n">Waiting for a bite...</span>'+(line.speed>1||line.bait==='worm'?'':' You can close this page.');
       var arm=armedUntil>now;
       go.className='go reel'+(arm?' arm':''); go.textContent=arm?'TAP AGAIN!':'REEL IN';
     }
     if(now-lastSonar>=1000){ lastSonar=now; renderSonar(); }
   }else{
     clock.className='clock ready'; clock.textContent='READY';
-    st.textContent=state.catches.length?'Drop another line. Patience pays.':'Worms get fast bites. Cast to start!';
+    st.textContent=otherOn?'A fish is on at another hole! Tap the flashing hole.':state.catches.length?'Drop another line. Patience pays.':'Worms get fast bites. Cast to start!';
     go.disabled=false; go.className='go'; go.textContent='CAST';
   }
 }
@@ -1115,7 +1265,7 @@ function cast(){
   ensureDaily();
   if(fx){ if(fx.out) fx=null; else return; }
   var seed; try{ seed=crypto.getRandomValues(new Uint32Array(1))[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
-  state.line={castAt:Date.now(),seed:seed,spot:state.spot,bait:state.bait,speed:state.practice?PRACTICE_SPEED:1};
+  state.line={castAt:Date.now(),seed:seed,lake:state.lake,spot:state.spot,bait:state.bait,speed:state.practice?PRACTICE_SPEED:1,test:LINE_TESTS[state.lineLvl||0],heat:!!state.heater};
   armedUntil=0; castAnim=performance.now(); parts=[]; debris=[]; cracks=[];
   save(); renderAll();
 }
@@ -1126,19 +1276,29 @@ function reelIn(){
   var info=lineInfo(line), practice=line.speed>1;
   if(minutes<info.bite){ if(!practice) state.fishedSec+=realSec; save(); renderAll(); toast('Empty hook. Nothing bit this time.'); return; }
   var r=info.roll;
-  var entry={sp:r.id,lb:r.lb,inches:r.inches,at:now,spot:line.spot,bait:line.bait,min:Math.round(info.bite*10)/10,practice:practice};
+  if(info.snap){
+    if(!practice){ state.fishedSec+=realSec; state.snaps=(state.snaps||0)+1; state.flags.snap=1; }
+    state.last={snap:true,sp:r.id,lb:r.lb,inches:r.inches,test:line.test,lake:line.lake||'pine',spot:line.spot,bait:line.bait,at:now,practice:practice,seen:false,hole:state.sel};
+    save(); startFx(state.last,reduceMotion); renderAll();
+    if(reduceMotion) showCard(); else setTimeout(showCard,CARD_AT);
+    setTimeout(checkAch,2600);
+    return;
+  }
+  var entry={sp:r.id,lb:r.lb,inches:r.inches,at:now,lake:line.lake||'pine',spot:line.spot,bait:line.bait,min:Math.round(info.bite*10)/10,practice:practice,variant:r.variant||null};
   var newBest=false,newSpecies=false,unlocked=[];
   if(!practice){
     var prev=overallBest(), beforeH=state.fishedSec/3600;
     state.total+=1; entry.n=state.total; state.fishedSec+=realSec;
     var rec=state.records[r.id];
     if(!rec) newSpecies=true;
-    if(!rec||r.lb>rec.lb) state.records[r.id]={lb:r.lb,inches:r.inches,at:now,min:entry.min,spot:line.spot,bait:line.bait};
+    if(!rec||r.lb>rec.lb) state.records[r.id]={lb:r.lb,inches:r.inches,at:now,min:entry.min,lake:entry.lake,spot:line.spot,bait:line.bait};
     newBest=!prev||r.lb>prev.lb;
     var afterH=state.fishedSec/3600;
     SPOTS.forEach(function(s){ if(s.unlockH>0&&beforeH<s.unlockH&&afterH>=s.unlockH) unlocked.push(s.name); });
     entry.uid=++state.uid;
-    state.bucket.unshift({uid:entry.uid,sp:r.id,lb:r.lb,inches:r.inches,at:now,spot:line.spot,bait:line.bait,bite:entry.min});
+    state.bucket.unshift({uid:entry.uid,sp:r.id,lb:r.lb,inches:r.inches,at:now,lake:entry.lake,spot:line.spot,bait:line.bait,bite:entry.min,variant:entry.variant});
+    if(r.variant){ state.variants[r.id]=state.variants[r.id]||{}; state.variants[r.id][r.variant]=1; state.flags[r.variant]=1; }
+    if(SP_BY_ID[r.id].legend) state.flags.legend=1;
     state.counts[r.id]=(state.counts[r.id]||0)+1;
     var hr=new Date(now).getHours();
     if(info.bite>=360) state.flags.wait6=1;
@@ -1148,7 +1308,7 @@ function reelIn(){
     dailyEvent('catch',{sp:r.id,lb:r.lb});
   }
   state.catches.unshift(entry); if(state.catches.length>60) state.catches.length=60;
-  state.last=Object.assign({newBest:newBest,newSpecies:newSpecies,unlocked:unlocked,seen:false},entry);
+  state.last=Object.assign({newBest:newBest,newSpecies:newSpecies,unlocked:unlocked,seen:false,hole:state.sel},entry);
   save();
   if(!practice){ lbSync(); setTimeout(checkAch,2600); }
   startFx(state.last,reduceMotion);
@@ -1157,7 +1317,7 @@ function reelIn(){
 }
 function sellUids(uids){
   var total=0, keep=[];
-  state.bucket.forEach(function(f){ if(uids.indexOf(f.uid)>=0) total+=fishValue(f.sp,f.lb); else keep.push(f); });
+  state.bucket.forEach(function(f){ if(uids.indexOf(f.uid)>=0) total+=fishValue(f.sp,f.lb,f.variant); else keep.push(f); });
   if(!total) return 0;
   state.bucket=keep; state.coins+=total; state.earned+=total; save(); renderHUD(); bumpCoins(); lbSync(); flyCoins(sellFrom); sellFrom=null; dailyEvent('sell',total);
   return total;
@@ -1166,6 +1326,21 @@ function showCard(){
   var L=state.last; if(!fx||fx.card||fx.out||!L) return;
   fx.card=true;
   var sp=SP_BY_ID[L.sp], rib=[];
+  if(L.snap){
+    $('catchLbl').textContent='LINE SNAPPED!';
+    $('ribbons').innerHTML='<span class="ribbon">IT GOT AWAY</span>'; $('ribbons').hidden=false;
+    $('catchName').textContent='IT LOOKED LIKE A '+sp.name.toUpperCase();
+    $('catchWeight').textContent=fmtWeightText(L.lb).toUpperCase();
+    $('catchLen').textContent='Your '+L.test+' lb line was too weak to hold it.';
+    $('catchFacts').innerHTML=''; $('catchFacts').hidden=true;
+    $('sellNow').hidden=false; $('sellNow').textContent=state.lineLvl>=LINE_TESTS.length-1?'OK':'STRONGER LINE';
+    $('keep').textContent='OK'; $('catchBtns').style.gridTemplateColumns='';
+    renderPanel(); tick(); requestAnimationFrame(measure); return;
+  }
+  $('catchLbl').textContent=sp.legend?'LEGENDARY CATCH!':'YOU CAUGHT'; $('catchFacts').hidden=false;
+  if(sp.legend) rib.push('<span class="ribbon gold">LEGENDARY!</span>');
+  if(L.variant==='golden') rib.push('<span class="ribbon gold">GOLDEN! 10X VALUE</span>');
+  if(L.variant==='albino') rib.push('<span class="ribbon white">ALBINO! 5X VALUE</span>');
   if(L.newBest) rib.push('<span class="ribbon">NEW RECORD!</span>');
   if(L.newSpecies) rib.push('<span class="ribbon g">NEW SPECIES</span>');
   (L.unlocked||[]).forEach(function(n){ rib.push('<span class="ribbon b">'+n.toUpperCase()+' UNLOCKED</span>'); });
@@ -1175,10 +1350,10 @@ function showCard(){
   $('catchName').textContent=sp.name.toUpperCase();
   $('catchWeight').textContent=fmtWeightText(L.lb).toUpperCase();
   $('catchLen').textContent=L.inches+' inches long';
-  $('catchFacts').innerHTML='<div class="fact"><span class="k">BIT AFTER</span><span class="v">'+fmtDuration(L.min)+'</span></div><div class="fact"><span class="k">SPOT</span><span class="v">'+SPOT_BY_ID[L.spot].name+'</span></div><div class="fact"><span class="k">BAIT</span><span class="v">'+BAIT_BY_ID[L.bait].name+'</span></div>';
+  $('catchFacts').innerHTML='<div class="fact"><span class="k">BIT AFTER</span><span class="v">'+fmtDuration(L.min)+'</span></div><div class="fact"><span class="k">'+lakeShort(L.lake)+' LAKE</span><span class="v">'+SPOT_BY_ID[L.spot].name+'</span></div><div class="fact"><span class="k">BAIT</span><span class="v">'+BAIT_BY_ID[L.bait].name+'</span></div>';
   var inBucket=!L.practice && state.bucket.some(function(f){return f.uid===L.uid;});
   $('sellNow').hidden=!inBucket;
-  if(inBucket) $('sellNow').textContent='SELL $'+money(fishValue(L.sp,L.lb));
+  if(inBucket) $('sellNow').textContent='SELL $'+money(fishValue(L.sp,L.lb,L.variant));
   $('keep').textContent=inBucket?'KEEP':'KEEP FISHING';
   $('catchBtns').style.gridTemplateColumns=inBucket?'':'minmax(0,1fr)';
   renderPanel(); tick(); requestAnimationFrame(measure);
@@ -1192,12 +1367,13 @@ function endFx(){
 }
 
 /* ---- menu & screens ---- */
-var OVERLAYS=['menuOv','tackleOv','baitOv','shopOv','bucketOv','fishOv','trophyOv','journalOv','achOv','boardOv','saveOv','helpOv'];
+var OVERLAYS=['menuOv','tackleOv','baitOv','gearOv','shopOv','bucketOv','fishOv','trophyOv','journalOv','achOv','boardOv','saveOv','helpOv'];
 function openOv(id){
   OVERLAYS.forEach(function(o){ $(o).hidden=true; });
   if(id==='menuOv') renderMenu();
   if(id==='tackleOv') renderTackle();
   if(id==='baitOv') renderBaitShop();
+  if(id==='gearOv') renderGear();
   if(id==='shopOv'){ shopPreview=null; renderShop(); }
   if(id==='bucketOv') renderBucket();
   if(id==='fishOv') renderFish();
@@ -1215,14 +1391,15 @@ function anyOpen(){ return !$('nameOv').hidden||!$('confirmOv').hidden||!$('away
 
 function renderMenu(){
   ensureDaily(); renderDaily();
-  var worth=state.bucket.reduce(function(s,f){return s+fishValue(f.sp,f.lb);},0);
+  var worth=state.bucket.reduce(function(s,f){return s+fishValue(f.sp,f.lb,f.variant);},0);
   var ownedClothes=state.ownedItems.filter(function(i){return ITEM_BY_ID[i]&&ITEM_BY_ID[i].price>0;}).length;
   var entries=[
-    {go:'tackleOv',icon:ICONS.tackle,t:'TACKLE BOX',s:SPOT_BY_ID[state.spot].name+' with '+BAIT_BY_ID[state.bait].name.toLowerCase()},
+    {go:'tackleOv',icon:ICONS.tackle,t:'TACKLE BOX',s:(state.holes.length>1?'Hole '+(state.sel+1)+': ':'')+LAKE_BY_ID[state.lake].name+', '+SPOT_BY_ID[state.spot].name+', '+BAIT_BY_ID[state.bait].name.toLowerCase()},
     {go:'bucketOv',icon:ICONS.pail,t:'INVENTORY',s:state.bucket.length?state.bucket.length+' fish, worth $'+money(worth):'Empty. Go catch something!'},
     {go:'baitOv',icon:BAIT_ART.minnow,t:'BAIT SHOP',s:state.ownedBaits.length+' of '+BAITS.length+' baits owned'},
+    {go:'gearOv',icon:ICONS.tipup,t:'GEAR SHOP',s:state.holes.length+(state.holes.length===1?' hole':' holes')+', '+LINE_TESTS[state.lineLvl]+' lb line, '+state.lakes.length+(state.lakes.length===1?' lake':' lakes')},
     {go:'shopOv',icon:ICONS.hat,t:'CLOTHES SHOP',s:ownedClothes?ownedClothes+' items bought':'Dress up your angler'},
-    {go:'trophyOv',icon:ICONS.trophy,t:'FISH JOURNAL',s:Object.keys(state.records).length+' of '+SPECIES.length+' species caught'},
+    {go:'trophyOv',icon:ICONS.trophy,t:'FISH JOURNAL',s:speciesFound()+' of '+normalCount()+' species, '+legendsFound()+' of 3 legends'},
     {go:'achOv',icon:ICONS.star,t:'ACHIEVEMENTS',s:state.ach.length+' of '+ACH.length+' unlocked'},
     {go:'boardOv',icon:ICONS.medal,t:'LEADERBOARD',s:state.username?'Playing as '+state.username+'#'+state.tag:'Biggest fish in the world'},
     {go:'saveOv',icon:ICONS.disk,t:'SAVE CODE',s:'Move your game to another device'},
@@ -1265,7 +1442,7 @@ function previewOutfit(){ var of=Object.assign({},state.outfit); if(shopPreview)
 function renderShop(){
   $('shopTabs').innerHTML=SLOTS.map(function(s){ return '<button type="button" data-tab="'+s.id+'" aria-pressed="'+(shopTab===s.id)+'">'+s.name+'</button>'; }).join('');
   var grid=$('shopItems'); grid.innerHTML='';
-  ITEMS.filter(function(i){return i.slot===shopTab;}).forEach(function(it){
+  ITEMS.filter(function(i){return i.slot===shopTab&&(!i.prize||state.ownedItems.indexOf(i.id)>=0);}).forEach(function(it){
     var owned=state.ownedItems.indexOf(it.id)>=0, worn=state.outfit[it.slot]===it.id;
     var sel=shopPreview?shopPreview===it.id:worn;
     var b=document.createElement('button'); b.type='button'; b.className='item'; b.dataset.item=it.id; b.setAttribute('aria-pressed',String(sel));
@@ -1273,7 +1450,7 @@ function renderShop(){
     b.appendChild(fisherCanvas(of).cloneNode(false)); b.lastChild.getContext('2d').drawImage(fisherCanvas(of),0,0);
     var n=document.createElement('span'); n.className='in'; n.textContent=it.name; b.appendChild(n);
     var p=document.createElement('span'); p.className='ip'+(worn?' worn':owned?' own':'');
-    p.textContent=worn?'WEARING':owned?'OWNED':'$'+money(it.price); b.appendChild(p);
+    p.textContent=worn?'WEARING':it.prize?'SEASON PRIZE':owned?'OWNED':'$'+money(it.price); b.appendChild(p);
     grid.appendChild(b);
   });
   var cv=$('dressCv'), c2=cv.getContext('2d'); c2.clearRect(0,0,12,18); c2.drawImage(fisherCanvas(previewOutfit()),0,0);
@@ -1298,29 +1475,30 @@ function shopAct(){
 }
 var invShow=60, inspectUid=null, cfResolve=null;
 function byUid(u){ for(var i=0;i<state.bucket.length;i++) if(state.bucket[i].uid===u) return state.bucket[i]; return null; }
-function cardFish(sp,shadow){
+function cardFish(sp,shadow,variant){
   var L=Math.min(30,Math.round(14+16*Math.log(SP_BY_ID[sp].max)/Math.log(150))), gh=fishCanvas(sp,L,true).height;
-  return fishImg(sp,L,shadow||false,Math.max(2,Math.min(Math.floor(110/(L+2)),Math.floor(60/gh))));
+  return fishImg(sp,L,shadow||false,Math.max(2,Math.min(Math.floor(110/(L+2)),Math.floor(60/gh))),variant);
 }
 function medalIcon(){ var c=spriteCanvas(ICONS.medal.rows,ICONS.medal.map,'medal'); c.setAttribute('aria-label','On the leaderboard'); c.setAttribute('role','img'); return c; }
 function renderBucket(){
   var sel=$('invSpecies');
   if(!sel.options.length) sel.innerHTML='<option value="">All fish</option>'+SPECIES.map(function(sp){return '<option value="'+sp.id+'">'+sp.name+'</option>';}).join('');
-  var worth=state.bucket.reduce(function(s,f){return s+fishValue(f.sp,f.lb);},0);
+  var worth=state.bucket.reduce(function(s,f){return s+fishValue(f.sp,f.lb,f.variant);},0);
   $('bucketSum').innerHTML=state.bucket.length?state.bucket.length+' fish worth <b>$'+money(worth)+'</b>':'No fish yet';
   $('sellAll').disabled=!state.bucket.length;
   $('sellAll').textContent=state.bucket.length?'SELL ALL $'+money(worth):'SELL ALL';
   var sp=sel.value, sort=$('invSort').value, board=boardFish();
   var list=state.bucket.filter(function(f){return !sp||f.sp===sp;}).slice();
-  list.sort(function(a,b){ return sort==='new'?b.at-a.at:sort==='value'?fishValue(b.sp,b.lb)-fishValue(a.sp,a.lb):b.lb-a.lb; });
+  list.sort(function(a,b){ return sort==='new'?b.at-a.at:sort==='value'?fishValue(b.sp,b.lb,b.variant)-fishValue(a.sp,a.lb,a.variant):b.lb-a.lb; });
   var grid=$('bucketList'); grid.innerHTML='';
   if(!list.length){ grid.innerHTML='<div class="empty" style="grid-column:1/-1">'+(state.bucket.length?'No '+SP_BY_ID[sp].name.toLowerCase()+' in your inventory yet.':'Your inventory is empty. Catch some fish and they land here.')+'</div>'; $('invMore').hidden=true; return; }
   list.slice(0,invShow).forEach(function(f){
     var b=document.createElement('button'); b.type='button'; b.className='card fish'; b.dataset.uid=f.uid;
-    var pic=document.createElement('div'); pic.className='pic'; pic.appendChild(cardFish(f.sp)); b.appendChild(pic);
-    var nm=document.createElement('div'); nm.className='nm'; nm.textContent=SP_BY_ID[f.sp].name.toUpperCase(); b.appendChild(nm);
+    if(f.variant) b.classList.add(f.variant);
+    var pic=document.createElement('div'); pic.className='pic'; pic.appendChild(cardFish(f.sp,false,f.variant)); b.appendChild(pic);
+    var nm=document.createElement('div'); nm.className='nm'; nm.textContent=(f.variant?f.variant.toUpperCase()+' ':'')+SP_BY_ID[f.sp].name.toUpperCase(); b.appendChild(nm);
     var v=document.createElement('div'); v.className='v'; v.textContent=fmtWeightText(f.lb); b.appendChild(v);
-    var sub=document.createElement('div'); sub.className='sub'; sub.textContent='Worth $'+money(fishValue(f.sp,f.lb)); b.appendChild(sub);
+    var sub=document.createElement('div'); sub.className='sub'; sub.textContent='Worth $'+money(fishValue(f.sp,f.lb,f.variant)); b.appendChild(sub);
     if(board[f.sp]&&board[f.sp].uid===f.uid) b.appendChild(medalIcon());
     b.setAttribute('aria-label',SP_BY_ID[f.sp].name+', '+fmtWeightText(f.lb)+(board[f.sp]&&board[f.sp].uid===f.uid?', on the leaderboard':''));
     grid.appendChild(b);
@@ -1330,19 +1508,22 @@ function renderBucket(){
 function renderFish(){
   var f=byUid(inspectUid); if(!f){ openOv('bucketOv'); return; }
   var sp=SP_BY_ID[f.sp], rib=[], rec=state.records[f.sp];
+  if(SP_BY_ID[f.sp].legend) rib.push('<span class="ribbon gold">LEGENDARY</span>');
+  if(f.variant==='golden') rib.push('<span class="ribbon gold">GOLDEN</span>');
+  if(f.variant==='albino') rib.push('<span class="ribbon white">ALBINO</span>');
   if(onBoard(f)) rib.push('<span class="ribbon b">ON THE LEADERBOARD</span>');
   if(rec&&rec.lb===f.lb) rib.push('<span class="ribbon">PERSONAL RECORD</span>');
   $('fiRibbons').innerHTML=rib.join(''); $('fiRibbons').hidden=!rib.length;
   var pic=$('fiPic'); pic.innerHTML='';
   var w=Math.min(300,(document.documentElement.clientWidth||360)-90);
-  pic.appendChild(fishImg(f.sp,46,false,Math.max(3,Math.floor(w/48))));
-  $('fiName').textContent=sp.name.toUpperCase();
+  pic.appendChild(fishImg(f.sp,46,false,Math.max(3,Math.floor(w/48)),f.variant));
+  $('fiName').textContent=(f.variant?f.variant.toUpperCase()+' ':'')+sp.name.toUpperCase();
   $('fiWeight').textContent=fmtWeightText(f.lb).toUpperCase();
   $('fiLen').textContent=f.inches+' inches long';
   var d=new Date(f.at), when=d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+', '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
   function fact(k,v){ return '<div class="fact"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; }
-  $('fiFacts').innerHTML=fact('CAUGHT',when)+fact('BIT AFTER',f.bite!=null?fmtDuration(f.bite):'Unknown')+fact('SPOT',f.spot?SPOT_BY_ID[f.spot].name:'Unknown')+fact('BAIT',f.bait?BAIT_BY_ID[f.bait].name:'Unknown');
-  $('fiSell').textContent='SELL FOR $'+money(fishValue(f.sp,f.lb));
+  $('fiFacts').innerHTML=fact('CAUGHT',when)+fact('BIT AFTER',f.bite!=null?fmtDuration(f.bite):'Unknown')+fact('SPOT',(f.lake?LAKE_BY_ID[f.lake].name+', ':'')+(f.spot?SPOT_BY_ID[f.spot].name:'Unknown'))+fact('BAIT',f.bait?BAIT_BY_ID[f.bait].name:'Unknown');
+  $('fiSell').textContent='SELL FOR $'+money(fishValue(f.sp,f.lb,f.variant));
 }
 function openFish(uid){ inspectUid=uid; openOv('fishOv'); }
 function askConfirm(o){
@@ -1350,7 +1531,7 @@ function askConfirm(o){
     cfResolve=res;
     $('cfTitle').textContent=o.title; $('cfMsg').textContent=o.msg;
     var pic=$('cfPic'); pic.innerHTML='';
-    if(o.fish){ pic.hidden=false; pic.appendChild(cardFish(o.fish.sp)); } else pic.hidden=true;
+    if(o.fish){ pic.hidden=false; pic.appendChild(cardFish(o.fish.sp,false,o.fish.variant)); } else pic.hidden=true;
     $('cfYes').textContent=o.yes; $('cfNo').textContent=o.no;
     $('cfAlt').hidden=!o.alt; if(o.alt) $('cfAlt').textContent=o.alt;
     $('confirmOv').hidden=false; try{ $('cfNo').focus(); }catch(e){}
@@ -1368,7 +1549,7 @@ async function trySell(uids,from){
       var f=byUid(hits[0]), nm=SP_BY_ID[f.sp].name.toLowerCase(), nx=nextBest(f);
       var ans=await askConfirm({title:'SELL YOUR LEADERBOARD FISH?',fish:f,
         msg:'This '+fmtWeightText(f.lb)+' '+nm+' is your biggest '+nm+', so it is on the world leaderboard. If you sell it, '+(nx?'your '+fmtWeightText(nx.lb)+' '+nm+' takes its place.':'you will not have a '+nm+' on the leaderboard anymore.'),
-        yes:'SELL $'+money(fishValue(f.sp,f.lb)),no:'KEEP IT'});
+        yes:'SELL $'+money(fishValue(f.sp,f.lb,f.variant)),no:'KEEP IT'});
       if(ans!=='yes') return 0;
     }else{
       var ans2=await askConfirm({title:'SELL LEADERBOARD FISH?',
@@ -1387,22 +1568,23 @@ function renderTrophies(){
   var stand=document.createElement('div'); stand.className='stand';
   stand.appendChild(best?fishImg(best.id,30,false,3):fishImg('largemouth',30,'#24406A',3));
   var info=document.createElement('div');
-  info.innerHTML='<div class="lbl">PERSONAL BEST</div>'+(best?'<div class="w" style="margin-top:8px">'+fmtWeightText(best.lb).toUpperCase()+'</div><div class="t">'+SP_BY_ID[best.id].name+', '+best.inches+' in, after '+fmtDuration(best.min)+'</div>':'<div class="t">Nothing on the wall yet. Go catch something!</div>');
+  info.innerHTML='<div class="lbl">PERSONAL BEST</div>'+(best?'<div class="w" style="margin-top:8px">'+fmtWeightText(best.lb).toUpperCase()+'</div><div class="t">'+SP_BY_ID[best.id].name+', '+best.inches+' in'+(best.min!=null?', after '+fmtDuration(best.min):'')+'</div>':'<div class="t">Nothing on the wall yet. Go catch something!</div>');
   wrap.appendChild(stand); wrap.appendChild(info); box.appendChild(wrap);
-  var found=Object.keys(state.records).length;
-  $('stats').innerHTML='<div class="fact"><span class="k">CAUGHT</span><span class="v">'+state.total+'</span></div><div class="fact"><span class="k">ON THE ICE</span><span class="v">'+fmtDuration(state.fishedSec/60)+'</span></div><div class="fact"><span class="k">SPECIES</span><span class="v">'+found+' / '+SPECIES.length+'</span></div><div class="fact"><span class="k">EARNED</span><span class="v">$'+money(state.earned)+'</span></div>';
+  $('stats').innerHTML='<div class="fact"><span class="k">CAUGHT</span><span class="v">'+state.total+'</span></div><div class="fact"><span class="k">ON THE ICE</span><span class="v">'+fmtDuration(state.fishedSec/60)+'</span></div><div class="fact"><span class="k">SPECIES</span><span class="v">'+speciesFound()+' / '+normalCount()+'</span></div><div class="fact"><span class="k">LEGENDS</span><span class="v">'+legendsFound()+' / 3</span></div><div class="fact"><span class="k">EARNED</span><span class="v">$'+money(state.earned)+'</span></div>';
+  $('jLakes').innerHTML=LAKES.map(function(l){ return '<button type="button" data-jlake="'+l.id+'" aria-pressed="'+(jLake===l.id)+'">'+lakeShort(l.id)+'</button>'; }).join('');
   var grid=$('grid'); grid.innerHTML='';
-  SPECIES.forEach(function(sp){
-    var r=state.records[sp.id], c=document.createElement('button'); c.type='button'; c.className='card fish'+(r?'':' no'); c.dataset.sp=sp.id;
+  SPECIES.filter(function(sp){ return !!sp.lakes[jLake]; }).forEach(function(sp){
+    var r=state.records[sp.id], c=document.createElement('button'); c.type='button'; c.className='card fish'+(r?'':' no')+(sp.legend?' legend':''); c.dataset.sp=sp.id;
     var pic=document.createElement('div'); pic.className='pic';
     var L=Math.min(30,Math.round(14+16*Math.log(sp.max)/Math.log(150)));
     var gh=fishCanvas(sp.id,L,true).height;
     pic.appendChild(fishImg(sp.id,L,r?false:'#24406A',Math.max(2,Math.min(Math.floor(110/(L+2)),Math.floor(60/gh)))));
     c.appendChild(pic);
     var baitNames=BAITS.filter(function(b){return sp.baits[b.id]>=1;}).map(function(b){return b.name.toLowerCase();});
-    var nm=document.createElement('div'); nm.className='nm'; nm.textContent=sp.name.toUpperCase();
+    var nm=document.createElement('div'); nm.className='nm'; nm.textContent=sp.legend&&!r?'??? LEGEND':sp.name.toUpperCase();
     var v=document.createElement('div'); v.className='v';
-    v.textContent=r?fmtWeightText(r.lb):'Not caught yet';
+    var vv=state.variants[sp.id]||{};
+    v.textContent=r?fmtWeightText(r.lb)+(vv.golden?' / GOLD':'')+(vv.albino?' / ALBINO':''):sp.legend?'Legendary':'Not caught yet';
     c.appendChild(nm); c.appendChild(v); grid.appendChild(c);
   });
   $('recent').innerHTML=state.catches.length?state.catches.slice(0,8).map(function(c){
@@ -1424,8 +1606,9 @@ function heroLen(lb){ return Math.max(5,Math.round(11*Math.cbrt(lb))); }
 function startFx(last,skip){
   var big=last.lb>=5, L=heroLen(last.lb);
   L=big?Math.max(28,Math.min(Math.round(L*1.6),Math.round(iceY*1.1))):Math.min(L,24);
-  fx={start:performance.now()-(skip?REEL+HAUL+400:0),id:last.sp,lb:last.lb,big:big,L:L,spot:last.spot,breached:!!skip,sparked:!!skip,card:false,out:0};
-  parts=[]; if(skip){ debris=[]; makeCracks(big); }
+  if(last.snap){ big=false; L=Math.min(heroLen(last.lb),30); }
+  fx={start:performance.now()-(skip?REEL+HAUL+400:0),id:last.sp,lb:last.lb,big:big,L:L,spot:last.spot,lake:last.lake||'pine',variant:last.variant||null,snap:!!last.snap,hole:last.hole==null?state.sel:last.hole,breached:!!skip,sparked:!!skip,card:false,out:0};
+  parts=[]; if(skip&&!last.snap){ debris=[]; makeCracks(big); }
 }
 function makeCracks(big){
   cracks=[]; var n=big?4:2;
@@ -1496,7 +1679,12 @@ function skyAt(h){
   return [hexC(SKY[0][1]),hexC(SKY[0][2])];
 }
 function lightAt(h){ if(h>=8&&h<=16.5) return 1; if(h<=5||h>=19.5) return 0; return h<12?(h-5)/3:(19.5-h)/3; }
-var WATER={shallows:['#2F84A0','#134262'],weedline:['#2A6F86','#0F3150'],deep:['#1F5278','#061630']};
+var WATERS={
+ pine:{shallows:['#2F84A0','#134262'],weedline:['#2A6F86','#0F3150'],deep:['#1F5278','#061630']},
+ northern:{shallows:['#2A7690','#0E3450'],weedline:['#246478','#0B2A44'],deep:['#1A4A68','#05122A']},
+ glacier:{shallows:['#46B4C8','#145A78'],weedline:['#3A9EB6','#0F4766'],deep:['#2E86A8','#0A2C4C']}
+};
+function sceneLake(){ return fx?fx.lake:(state.line?state.line.lake||'pine':state.lake); }
 function hookDepth(spot){ return {shallows:.42,weedline:.6,deep:.84}[spot]; }
 function holeX(){ return Math.round(W/2)+8; }
 function hookY(spot){ var top=iceY+ICE_H; return Math.round(top+(floorY-top)*hookDepth(spot)); }
@@ -1505,10 +1693,11 @@ function sceneLen(id){ return Math.round(5+24*Math.log(SP_BY_ID[id].max)/Math.lo
 var fishes=[];
 function poolTarget(){ return state.line?Math.min(7,3+Math.floor(effMinutes(state.line,Date.now())/120)):3; }
 function spawnFish(initial){
-  var line=state.line, spot=line?line.spot:state.spot, bait=line?line.bait:state.bait;
+  var line=state.line, spot=line?line.spot:state.spot, bait=line?line.bait:state.bait, lake=sceneLake();
   var T=line?effMinutes(line,Date.now()):0;
-  var list=speciesWeights(spot,bait,T,nowHour()).filter(function(x){return x.w>0;});
-  if(!list.length) list=speciesWeights('shallows','worm',0).filter(function(x){return x.w>0;});
+  var list=speciesWeights(spot,bait,T,nowHour(),lake).filter(function(x){return x.w>0&&!x.sp.legend;});
+  if(!list.length) list=speciesWeights('shallows','worm',0,null,lake).filter(function(x){return x.w>0&&!x.sp.legend;});
+  if(!list.length) list=speciesWeights('shallows','worm',0,null,'pine').filter(function(x){return x.w>0;});
   var tot=0; list.forEach(function(x){tot+=x.w;}); var r=Math.random()*tot, sp=list[0].sp;
   for(var i=0;i<list.length;i++){ r-=list[i].w; if(r<=0){ sp=list[i].sp; break; } }
   var L=sceneLen(sp.id), dir=Math.random()<.5?1:-1;
@@ -1528,7 +1717,7 @@ function draw(ms){
   var t=reduceMotion?0:ms/1000, dt=Math.min(0.1,Math.max(0,(ms-lastT)/1000)); lastT=ms;
   floorY+=(floorTarget-floorY)*Math.min(1,dt*6); var fy=Math.round(floorY);
   var d=new Date(), h=d.getHours()+d.getMinutes()/60, sky=skyAt(h), lt=lightAt(h), dk=(1-lt)*0.55;
-  var spot=state.line?state.line.spot:(fx?fx.spot:state.spot);
+  var spot=fx?fx.spot:(state.line?state.line.spot:state.spot), lake=sceneLake();
   var hx=holeX(), waterTop=iceY+ICE_H, i, x, y, r;
 
   var storm=stormNow();
@@ -1547,17 +1736,28 @@ function draw(ms){
   var sx=Math.round(W*(0.1+0.8*p)), sy=Math.round(iceY-14-Math.sin(Math.PI*p)*(iceY*0.62));
   if(day){ disc(sx,sy,6,'#FFE9A8'); disc(sx,sy,4,'#FFF6D6'); }
   else { disc(sx,sy,5,'#E4EAF6'); disc(sx+2,sy-1,4,rgb(mixC(sky[0],sky[1],Math.max(0,sy)/iceY))); }
-  var hill=shade('#D5E6F0',0.2+dk), pine=shade('#1E4A3E',0.25+dk*0.8), pineS=shade('#EAF4FA',0.15+dk);
-  for(x=0;x<W;x++){ var hy=iceY-4-Math.round(4*Math.sin(x*0.035+1)+3*Math.sin(x*0.09)); ctx.fillStyle=hill; ctx.fillRect(x,hy,1,iceY-hy); }
-  for(i=0;i<W/7;i++){
-    var bx=Math.round(i*7+hash(i)*5), ph=7+Math.round(hash(i+11)*9), base=iceY-2;
+  if(lake==='glacier'){
+    var rockC=shade('#7A8EA2',0.15+dk), rockD=shade('#5A6E82',0.2+dk), capC=shade('#F4F9FC',0.1+dk*0.8);
+    for(x=0;x<W;x++){
+      var mh=0; for(i=0;i<6;i++){ var pxk=W*(i/5)+(hash(i+21)-0.5)*W*0.18, pk=iceY*(0.42+hash(i+3)*0.28); mh=Math.max(mh,pk-Math.abs(x-pxk)*(0.9+hash(i+9)*0.5)); }
+      if(mh<=0) continue; var top=Math.round(iceY-mh);
+      ctx.fillStyle=(x%9<4)?rockD:rockC; ctx.fillRect(x,top,1,iceY-top);
+      ctx.fillStyle=capC; ctx.fillRect(x,top,1,Math.max(1,Math.round(Math.min(mh*0.28,9))));
+    }
+  }
+  var northern=lake==='northern';
+  var hill=shade(northern?'#A9C0CC':'#D5E6F0',0.2+dk), pine=shade(northern?'#143A32':'#1E4A3E',0.25+dk*0.8), pineS=shade('#EAF4FA',0.15+dk);
+  if(lake!=='glacier') for(x=0;x<W;x++){ var hy=iceY-4-Math.round((northern?6:4)*Math.sin(x*0.035+1)+3*Math.sin(x*0.09)); ctx.fillStyle=hill; ctx.fillRect(x,hy,1,iceY-hy); }
+  var gapP=lake==='glacier'?16:northern?5:7;
+  for(i=0;i<W/gapP;i++){
+    var bx=Math.round(i*gapP+hash(i)*5), ph=(northern?9:7)+Math.round(hash(i+11)*(northern?12:9)), base=iceY-2;
     if(Math.abs(bx-hx)<26 && hash(i+5)<0.7) continue;
     for(r=0;r<ph;r++){ var wdt=Math.floor(r/2.2)+1; ctx.fillStyle=pine; ctx.fillRect(bx-wdt+1,base-ph+r,wdt*2-1,1); if(r%3===1){ ctx.fillStyle=pineS; ctx.fillRect(bx-wdt+1,base-ph+r,Math.max(1,wdt-1),1);} }
     ctx.fillStyle=shade('#3A2A20',0.3+dk); ctx.fillRect(bx,base,1,2);
   }
 
   var dkL=dk*0.3;
-  var wc=WATER[spot]||WATER.shallows, wt=hexC(wc[0]), wb=hexC(wc[1]);
+  var wc=(WATERS[lake]||WATERS.pine)[spot]||WATERS.pine.shallows, wt=hexC(wc[0]), wb=hexC(wc[1]);
   for(y=waterTop;y<H;y++){ var k=(y-waterTop)/Math.max(1,fy-waterTop); ctx.fillStyle=rgb(mixC(mixC(wt,wb,Math.min(1,k)),DARK,dkL*0.9)); ctx.fillRect(0,y,W,1); }
   if(lt>0.2){
     ctx.fillStyle='rgba(220,240,255,'+(0.07*lt).toFixed(3)+')';
@@ -1566,7 +1766,7 @@ function draw(ms){
   var sed=shade('#2A3A3E',0.15+dkL), sedHi=shade('#4A5A52',0.15+dkL), rock=shade('#56606A',0.1+dkL);
   for(x=0;x<W;x++){ var fl=fy+Math.round(1.5*Math.sin(x*0.13)+Math.sin(x*0.41)); ctx.fillStyle=sedHi; ctx.fillRect(x,fl,1,1); ctx.fillStyle=sed; ctx.fillRect(x,fl+1,1,H-fl); }
   for(i=0;i<W/18;i++){ disc(Math.round(hash(i*5.3)*W),fy+1,1+Math.round(hash(i*2.1)*2),rock); }
-  var wn={shallows:14,weedline:30,deep:5}[spot], wmax={shallows:16,weedline:Math.max(20,(fy-waterTop)*0.65),deep:10}[spot];
+  var wn=Math.round({shallows:14,weedline:30,deep:5}[spot]*(lake==='glacier'?0.4:1)), wmax={shallows:16,weedline:Math.max(20,(fy-waterTop)*0.65),deep:10}[spot];
   for(i=0;i<wn;i++){
     var wx=Math.round(hash(i*9.7+(spot.length))*W), wh=Math.round(6+hash(i*4.4)*wmax), col=i%2?shade('#3F8A47',0.2+dkL):shade('#2E6B3A',0.2+dkL);
     for(r=0;r<wh;r++){ var sway=Math.round(Math.sin(t*1.2+i+r*0.22)*(r/wh)*2.4); ctx.fillStyle=col; ctx.fillRect(wx+sway,fy-r,1,1); if(r%4===2) ctx.fillRect(wx+sway+(i%2?1:-1),fy-r,1,1); }
@@ -1588,21 +1788,24 @@ function draw(ms){
   // ---- catch animation state ----
   var F=null;
   if(fx){
-    var ft=ms-fx.start, cs=fishCanvas(fx.id,fx.L,false), pre=ft<REEL;
+    var ft=ms-fx.start, cs=fishCanvas(fx.id,fx.L,false,fx.variant), pre=ft<REEL||fx.snap;
     var hangY=fx.big?Math.max(hudB+3,iceY-Math.round(fx.L*0.8)):iceY-21;
     var y0=hookY(fx.spot), hp, th;
-    if(pre){
-      hp=y0+(waterTop+2-y0)*easeIO(ft/REEL); th=Math.sin(ft/90)*0.08;
+    if(fx.snap&&ft>=REEL*0.85){
+      var ks=Math.min(1,(ft-REEL*0.85)/1100); hp=waterTop+2+(fy-waterTop)*ks*ks; th=ks*1.2;
+      if(!fx.breached){ fx.breached=true; for(var q=0;q<10;q++) parts.push({k:'drop',x:hx+(Math.random()-0.5)*6,y:iceY+1,vx:(Math.random()-0.5)*20,vy:-(10+Math.random()*16),g:75,c:'#8ED0EE',sz:1,life:2}); if(!reduceMotion){ shakeUntil=ms+250; shakeAmp=1; } }
+    }else if(pre){
+      hp=y0+(waterTop+2-y0)*easeIO(Math.min(1,ft/REEL)); th=Math.sin(ft/90)*0.08;
       if(!reduceMotion && ft>REEL-500){ shakeUntil=Math.max(shakeUntil,ms+40); shakeAmp=Math.max(shakeAmp,0.6); }
     }else{
       var kh=Math.min(1,(ft-REEL)/HAUL); hp=(waterTop+2)+(hangY-(waterTop+2))*easeOutBack(kh);
       var sec=(ft-REEL)/1000; th=(0.5*Math.exp(-sec/1.6)+0.05)*Math.sin(sec*3.2)*(fx.big?0.55:1);
       if(!fx.breached){ fx.breached=true; breach(fx.big); }
-      if(!fx.sparked && kh>=1){ fx.sparked=true; if(state.last&&state.last.newBest) sparkle(hx,hangY,fx.L); }
+      if(!fx.sparked && kh>=1){ fx.sparked=true; if(state.last&&(state.last.newBest||state.last.variant||SP_BY_ID[fx.id].legend)) sparkle(hx,hangY,fx.L); if(SP_BY_ID[fx.id].legend){ sparkle(hx,hangY,fx.L); sparkle(hx,hangY,fx.L); } }
     }
-    if(fx.out){ var ko=Math.min(1,(ms-fx.out)/700); hp-=(hp+fx.L+30)*ko*ko; }
+    if(fx.out&&!fx.snap){ var ko=Math.min(1,(ms-fx.out)/700); hp-=(hp+fx.L+30)*ko*ko; }
     F={ft:ft,cs:cs,hook:Math.round(hp),th:th,pre:pre};
-    if(pre) drawHero(cs,hx,F.hook,th);
+    if(pre){ if(fx.snap&&ft>=REEL*0.85) ctx.globalAlpha=Math.max(0,1-(ft-REEL*0.85)/1100); drawHero(cs,hx,F.hook,th); ctx.globalAlpha=1; }
   }
 
   var gapL=hx-5, gapR=hx+5;
@@ -1620,6 +1823,19 @@ function draw(ms){
   ctx.fillStyle=shade('#3E6E8C',dkL*0.7); cracks.forEach(function(c){ ctx.fillRect(hx+c[0],iceY+c[1],1,1); });
   debris.forEach(function(d){ ctx.fillStyle=shade(d.c,dkL*0.8); ctx.fillRect(hx+d.dx,d.y,d.sz,d.sz); });
 
+  // tip-ups for the other holes
+  var tj=0;
+  state.holes.forEach(function(h,i){
+    if(i===state.sel) return;
+    var tx=hx+24+tj*15; if(tx>W-6) tx=hx-36-(tj-Math.max(0,Math.floor((W-6-hx-24)/15)+1))*15; tj++;
+    ctx.fillStyle=shade(wc[0],dkL); ctx.fillRect(tx-2,iceY,5,2);
+    if(!h.line) return;
+    var up=hooked(h.line), wave=Math.floor(t*6)%2;
+    ctx.fillStyle='#6A4A2A'; ctx.fillRect(tx-4,iceY-1,9,1); ctx.fillRect(tx,iceY-5,1,5);
+    if(up){ ctx.fillStyle='#3A2A1A'; ctx.fillRect(tx,iceY-13,1,8); ctx.fillStyle='#E5484D'; ctx.fillRect(tx+1,iceY-13+wave,4,3); ctx.fillStyle='#FF8A8D'; ctx.fillRect(tx+1,iceY-13+wave,4,1); }
+    else { ctx.fillStyle='#E07A2A'; ctx.fillRect(tx+1,iceY-3,2,2); }
+  });
+
   // crane for trophy fish
   var craneTip=null;
   if(fx&&fx.big){
@@ -1631,7 +1847,7 @@ function draw(ms){
   }
 
   var hop=(F&&!F.pre&&!fx.out&&F.ft<REEL+HAUL+3500&&Math.floor(F.ft/170)%2)?1:0;
-  var fX=hx-21-(fx&&fx.big?Math.min(12,Math.max(0,Math.round(fishCanvas(fx.id,fx.L,false).height/2)-6)):0), fY=iceY-18-hop;
+  var fX=hx-21-(fx&&fx.big?Math.min(12,Math.max(0,Math.round(fishCanvas(fx.id,fx.L,false,fx.variant).height/2)-6)):0), fY=iceY-18-hop;
   ctx.drawImage(fisherCanvas(state.outfit),fX,fY);
   if(lt<0.5){
     var g2=ctx.createRadialGradient(fX-3,iceY-3,0,fX-3,iceY-3,22); g2.addColorStop(0,'rgba(255,200,110,'+(0.35*(1-lt*2)).toFixed(2)+')'); g2.addColorStop(1,'rgba(255,200,110,0)');
@@ -1652,14 +1868,15 @@ function draw(ms){
   var hyHook=hookY(spot), castK=castAnim?Math.min(1,(ms-castAnim)/700):1;
   if(F){
     ctx.fillStyle='rgba(230,240,250,0.85)';
-    if(F.pre||!fx.big){ if(F.hook>tipY+1) ctx.fillRect(tipX,tipY+1,1,F.hook-tipY-1); }
+    if(fx.snap&&F.ft>=REEL*0.85) ctx.fillRect(tipX,tipY+1,1,6);
+    else if(F.pre||!fx.big){ if(F.hook>tipY+1) ctx.fillRect(tipX,tipY+1,1,F.hook-tipY-1); }
     else ctx.fillRect(tipX,tipY+1,1,4);
     if(craneTip&&!F.pre){ line(craneTip[0],craneTip[1]+1,hx,F.hook-2,'#2A2E38'); drawSprite(ctx,["yYy",".y."],{y:'#C98A12',Y:'#FFE08A'},hx-1,F.hook-3); }
     if(!F.pre) drawHero(F.cs,hx,F.hook,F.th);
-    if(!F.pre&&!fx.out&&Math.random()<dt*(fx.big?6:3)){
+    if(!F.pre&&!fx.out&&!fx.snap&&Math.random()<dt*(fx.big?6:3)){
       var tw=F.cs.width-2; parts.push({k:'drop',x:hx-tw*Math.sin(F.th),y:F.hook+tw*Math.cos(F.th),vx:0,vy:4,g:75,c:'#8ED0EE',sz:1,life:3});
     }
-    if(fx.out&&ms-fx.out>(fx.big?1250:750)){ fx=null; setTimeout(renderAll,0); }
+    if(fx.out&&ms-fx.out>(fx.big?1250:fx.snap?100:750)){ fx=null; setTimeout(renderAll,0); }
   }else if(line0){
     var curY=Math.round(iceY+(hyHook-iceY)*(reduceMotion?1:castK)), wob=Math.round(Math.sin(t*1.6)*0.6);
     ctx.fillStyle='rgba(230,240,250,0.75)'; ctx.fillRect(tipX,tipY+1,1,curY-tipY-1);
@@ -1721,10 +1938,16 @@ function onBoard(f){ var b=boardFish()[f.sp]; return !!b&&b.uid===f.uid; }
 function weekStart(now){ var d=new Date(now||Date.now()), day=(d.getUTCDay()+6)%7; return Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()-day); }
 function weekKey(){ var d=new Date(weekStart()); return 'w'+d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); }
 function bestBy(list){ var best={}; list.forEach(function(f){ var b=best[f.sp]; if(!b||f.lb>b.lb||(f.lb===b.lb&&f.uid<b.uid)) best[f.sp]=f; }); return best; }
+var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function seasonStart(t){ var d=new Date(t||Date.now()); return Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1); }
+function seasonKey(t){ var d=new Date(t||Date.now()); return 's'+d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0'); }
+function prevSeasonKey(){ return seasonKey(seasonStart()-86400000); }
+function seasonName(k){ return MONTHS[+k.slice(6,8)-1]+' '+k.slice(1,5); }
+function seasonEndsIn(){ var d=new Date(), end=Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1); return fmtDuration((end-Date.now())/60000); }
 function boardPayload(){
-  var out=[], ws=weekStart(), wk=weekKey();
-  [[bestBy(state.bucket),'all'],[bestBy(state.bucket.filter(function(f){return f.at>=ws;})),wk]].forEach(function(pair){
-    SPECIES.forEach(function(sp){ var f=pair[0][sp.id]; if(f) out.push({species:sp.id,lb:f.lb,inches:f.inches,bait:f.bait||null,spot:f.spot||null,period:pair[1],caught_at:new Date(f.at).toISOString()}); });
+  var out=[], ws=weekStart(), wk=weekKey(), ss=seasonStart(), sk=seasonKey();
+  [[bestBy(state.bucket),'all'],[bestBy(state.bucket.filter(function(f){return f.at>=ws;})),wk],[bestBy(state.bucket.filter(function(f){return f.at>=ss;})),sk]].forEach(function(pair){
+    SPECIES.forEach(function(sp){ var f=pair[0][sp.id]; if(f) out.push({species:sp.id,lb:f.lb,inches:f.inches,bait:f.bait||null,spot:f.spot||null,period:pair[1],caught_at:new Date(f.at).toISOString(),variant:f.variant||null}); });
   });
   return out;
 }
@@ -1737,8 +1960,15 @@ async function lbPush(){
   if(sig===state.lbSig) return;
   lbBusy=true; var ok=false;
   try{
-    var r=await fetch(lbBase()+'/rest/v1/rpc/sync_player',{method:'POST',headers:lbHeaders({'Content-Type':'application/json'}),
-      body:JSON.stringify({p_pid:state.pid,p_secret:state.secret,p_name:state.username,p_tag:state.tag,p_fish:fish})});
+    var r=await fetch(lbBase()+'/rest/v1/rpc/sync_player2',{method:'POST',headers:lbHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({p_pid:state.pid,p_secret:state.secret,p_name:state.username,p_tag:state.tag,p_fish:fish,p_periods:['all',weekKey(),seasonKey()]})});
+    if(r.status===404){
+      /* Database not upgraded yet: fall back to the older sync, without seasons or new species. */
+      var OLD=['bluegill','perch','crappie','largemouth','smallmouth','walleye','channel','pike','laketrout','muskie','flathead','sturgeon'];
+      var old=fish.filter(function(f){ return f.period!==seasonKey()&&OLD.indexOf(f.species)>=0; }).map(function(f){ var g=Object.assign({},f); delete g.variant; return g; });
+      r=await fetch(lbBase()+'/rest/v1/rpc/sync_player',{method:'POST',headers:lbHeaders({'Content-Type':'application/json'}),
+        body:JSON.stringify({p_pid:state.pid,p_secret:state.secret,p_name:state.username,p_tag:state.tag,p_fish:old})});
+    }
     ok=r.ok; if(ok){ state.lbSig=sig; save(); }
   }catch(e){}
   lbBusy=false;
@@ -1755,10 +1985,13 @@ async function renderBoard(){
     return;
   }
   var seq=++lbSeq, species=sel.value;
+  $('lbSeason').textContent=lbPeriod==='season'?seasonName(seasonKey())+' season. Ends in '+seasonEndsIn()+'. The top 3 win coins and the Champion cap.':lbPeriod==='past'?'Hall of fame: the '+seasonName(prevSeasonKey())+' season.':lbPeriod==='week'?'Fish caught since Monday. Starts fresh every week.':'';
   ul.innerHTML='<li class="gap" style="padding:18px 6px">Loading the leaderboard...</li>';
   try{
-    var q='select=name,tag,species,lb,inches&order=lb.desc&limit=500&period=eq.'+encodeURIComponent(lbPeriod==='week'?weekKey():'all')+(species?'&species=eq.'+encodeURIComponent(species):'');
+    var pk={all:'all',week:weekKey(),season:seasonKey(),past:prevSeasonKey()}[lbPeriod];
+    var q='select=name,tag,species,lb,inches,variant&order=lb.desc&limit=500&period=eq.'+encodeURIComponent(pk)+(species?'&species=eq.'+encodeURIComponent(species):'');
     var r=await fetch(lbBase()+'/rest/v1/board?'+q,{headers:lbHeaders({})});
+    if(!r.ok&&q.indexOf(',variant')>=0){ r=await fetch(lbBase()+'/rest/v1/board?'+q.replace(',variant',''),{headers:lbHeaders({})}); }
     if(!r.ok) throw new Error('bad');
     var rows=await r.json(); if(seq!==lbSeq) return;
     var seen={}, list=[];
@@ -1770,10 +2003,10 @@ async function renderBoard(){
     function row(x,i){
       var li=document.createElement('li'); if(x.name+'#'+x.tag===meKey) li.className='me';
       var rk=document.createElement('span'); rk.className='rk'; rk.textContent='#'+(i+1);
-      var ic=document.createElement('span'); ic.className='ic'; ic.appendChild(fishImg(x.species,13,false,3));
+      var ic=document.createElement('span'); ic.className='ic'; ic.appendChild(fishImg(x.species,13,false,3,x.variant||null));
       var who=document.createElement('span'); who.className='who';
       var nm=document.createElement('div'); nm.className='nm'; nm.textContent=x.name; var tg=document.createElement('small'); tg.textContent=' #'+x.tag+(li.className?'  (you)':''); nm.appendChild(tg);
-      var sp=document.createElement('div'); sp.className='sp'; var bw=document.createElement('b'); bw.textContent=fmtWeightText(+x.lb); sp.appendChild(bw); sp.appendChild(document.createTextNode('  '+SP_BY_ID[x.species].name+', '+x.inches+' in'));
+      var sp=document.createElement('div'); sp.className='sp'; var bw=document.createElement('b'); bw.textContent=fmtWeightText(+x.lb); sp.appendChild(bw); sp.appendChild(document.createTextNode('  '+(x.variant?x.variant.charAt(0).toUpperCase()+x.variant.slice(1)+' ':'')+SP_BY_ID[x.species].name.replace(/^./,function(c){return x.variant?c.toLowerCase():c;})+', '+x.inches+' in'));
       who.appendChild(nm); who.appendChild(sp);
       li.appendChild(rk); li.appendChild(ic); li.appendChild(who); ul.appendChild(li);
     }
@@ -1804,6 +2037,46 @@ function saveName(e){
   toast(changed?'Name changed to '+n+'#'+state.tag+'.':'Welcome, '+n+'#'+state.tag+'! Grab your worms.',2600,true);
 }
 
+/* ================= GEAR SHOP ================= */
+var GEAR=[
+ {id:'hole2',group:'MORE HOLES',icon:'tipup',name:'Second hole',price:400,desc:'Fish two holes at once. Each hole has its own lake, spot and bait. A flag pops up when a fish bites.',
+  own:function(){return state.holes.length>=2;},ready:function(){return true;}},
+ {id:'hole3',group:'MORE HOLES',icon:'tipup',name:'Third hole',price:1500,desc:'Three lines in the water.',own:function(){return state.holes.length>=3;},ready:function(){return state.holes.length>=2;},need:'Buy the second hole first.'},
+ {id:'hole4',group:'MORE HOLES',icon:'tipup',name:'Fourth hole',price:5000,desc:'The most holes allowed. Four lines in the water.',own:function(){return state.holes.length>=4;},ready:function(){return state.holes.length>=3;},need:'Buy the third hole first.'},
+ {id:'line1',group:'FISHING LINE',icon:'spool',name:'30 lb line',price:300,desc:'Fish heavier than your line can snap it and get away. Your starter line holds 15 lb.',own:function(){return state.lineLvl>=1;},ready:function(){return true;}},
+ {id:'line2',group:'FISHING LINE',icon:'spool',name:'60 lb line',price:1200,desc:'Holds big muskie, catfish and lake trout.',own:function(){return state.lineLvl>=2;},ready:function(){return state.lineLvl>=1;},need:'Buy the 30 lb line first.'},
+ {id:'line3',group:'FISHING LINE',icon:'spool',name:'150 lb braided line',price:4000,desc:'Nothing in these lakes can break it. Not even a legend.',own:function(){return state.lineLvl>=3;},ready:function(){return state.lineLvl>=2;},need:'Buy the 60 lb line first.'},
+ {id:'finder',group:'ELECTRONICS',icon:'disk',name:'Pro fish finder',price:600,desc:'When something bites, it shows exactly what fish it is and how much it weighs.',own:function(){return !!state.finder;},ready:function(){return true;}},
+ {id:'heater',group:'ICE SHACK',icon:'heater',name:'Shack heater',price:2500,desc:'You stay warm and fish smarter. Bites come about 25% sooner on new casts.',own:function(){return !!state.heater;},ready:function(){return true;}},
+ {id:'northern',group:'LAKE PASSES',icon:'tackle',name:'Northern Lake pass',price:2500,desc:LAKE_BY_ID.northern.desc+' Rumors say a legendary pike lives here.',own:function(){return state.lakes.indexOf('northern')>=0;},ready:function(){return true;}},
+ {id:'glacier',group:'LAKE PASSES',icon:'mountain',name:'Glacier Lake pass',price:10000,desc:LAKE_BY_ID.glacier.desc+' Something pale lives in the deep water.',own:function(){return state.lakes.indexOf('glacier')>=0;},ready:function(){return true;}}
+];
+function gearBuy(id){
+  var g=GEAR.filter(function(x){return x.id===id;})[0]; if(!g||g.own()||!g.ready()||state.coins<g.price) return;
+  state.coins-=g.price; state.spent=(state.spent||0)+g.price;
+  if(/^hole/.test(id)) state.holes.push({lake:state.lake,spot:'shallows',bait:'worm',line:null});
+  else if(/^line/.test(id)) state.lineLvl=+id.slice(4);
+  else if(id==='finder') state.finder=true;
+  else if(id==='heater') state.heater=true;
+  else state.lakes.push(id);
+  save(); bumpCoins(); renderGear(); renderAll(); setTimeout(checkAch,1200);
+  toast(/^hole/.test(id)?'New hole drilled! Tap the HOLE buttons to switch.':'Bought the '+g.name.toLowerCase()+'!',3000,true);
+}
+function renderGear(){
+  var box=$('gearList'); box.innerHTML=''; var last='';
+  GEAR.forEach(function(g){
+    if(g.group!==last){ var h=document.createElement('div'); h.className='gear-group'; h.textContent=g.group; box.appendChild(h); last=g.group; }
+    var row=document.createElement('div'); row.className='row';
+    var ic=document.createElement('div'); ic.className='ic'; var cv=spriteCanvas(ICONS[g.icon].rows,ICONS[g.icon].map); cv.style.width='40px'; cv.style.height='40px'; ic.appendChild(cv);
+    var info=document.createElement('div'); info.innerHTML='<div class="nm"></div><div class="sub"></div>';
+    info.querySelector('.nm').textContent=g.name.toUpperCase(); info.querySelector('.sub').textContent=g.desc+(!g.own()&&!g.ready()?' '+g.need:'');
+    var act=document.createElement('div');
+    if(g.own()) act.innerHTML='<span class="own">OWNED</span>';
+    else act.innerHTML='<button class="pbtn gold" type="button" data-gear="'+g.id+'"'+(!g.ready()||state.coins<g.price?' disabled':'')+'>$'+money(g.price)+'</button>';
+    row.appendChild(ic); row.appendChild(info); row.appendChild(act); box.appendChild(row);
+  });
+}
+
 /* ================= DAILY CHALLENGE ================= */
 function dayKey(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 function strSeed(str){ var h=2166136261; for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
@@ -1811,7 +2084,7 @@ function ensureDaily(){
   var k=dayKey(); if(state.daily&&state.daily.key===k) return;
   var r=mulberry32(strSeed(k+'|'+(state.tag||'0')));
   var hours=state.fishedSec/3600, spots=SPOTS.filter(function(x){return state.practice||hours>=x.unlockH;}).map(function(x){return x.id;});
-  var cands=SPECIES.filter(function(sp){ return sp.minWait<=90&&state.ownedBaits.some(function(b){return (sp.baits[b]||0)>=1;})&&spots.some(function(x){return (sp.spots[x]||0)>=1;}); });
+  var cands=SPECIES.filter(function(sp){ return !sp.legend&&sp.minWait<=90&&state.ownedBaits.some(function(b){return (sp.baits[b]||0)>=1;})&&state.lakes.some(function(l){ return spots.some(function(x){return spW(sp,l,x)>=1;}); }); });
   var kinds=['species','count','weight','sell'], kind=kinds[Math.floor(r()*kinds.length)], d={key:k,kind:kind,progress:0,done:false};
   var top=owns('sucker')?'sucker':owns('cut')?'cut':owns('minnow')?'minnow':'worm';
   if(kind==='species'&&cands.length){ var sp=cands[Math.floor(r()*cands.length)]; d.sp=sp.id; d.target=1; d.reward=30+(sp.max>10?40:sp.max>3?20:0); }
@@ -1848,7 +2121,8 @@ function dailyEvent(type,v){
 }
 
 /* ================= ACHIEVEMENTS ================= */
-function speciesFound(){ return Object.keys(state.records).length; }
+function speciesFound(){ return Object.keys(state.records).filter(function(k){return SP_BY_ID[k]&&!SP_BY_ID[k].legend;}).length; }
+function legendsFound(){ return Object.keys(state.records).filter(function(k){return SP_BY_ID[k]&&SP_BY_ID[k].legend;}).length; }
 function bestLb(){ var b=overallBest(); return b?b.lb:0; }
 function paidClothes(){ return state.ownedItems.filter(function(i){return ITEM_BY_ID[i]&&ITEM_BY_ID[i].price>0;}).length; }
 function flag(k){ return [state.flags[k]?1:0,1]; }
@@ -1860,7 +2134,7 @@ var ACH=[
  {id:'allbait',name:'Full Tackle Box',desc:'Own every kind of bait.',reward:200,prog:function(){return [state.ownedBaits.length,BAITS.length];}},
  {id:'deep',name:'Into the Deep',desc:'Unlock the Deep Hole (8 hours of fishing).',reward:100,prog:function(){return [Math.min(8,Math.floor(state.fishedSec/3600)),8];}},
  {id:'sp6',name:'Collector',desc:'Catch 6 different species.',reward:100,prog:function(){return [speciesFound(),6];}},
- {id:'sp12',name:'Master Angler',desc:'Catch all 12 species.',reward:500,prog:function(){return [speciesFound(),12];}},
+ {id:'sp12',name:'Master Angler',desc:'Catch all 20 regular species.',reward:500,prog:function(){return [speciesFound(),normalCount()];}},
  {id:'lb10',name:'Ten Pounder',desc:'Land a fish of 10 lb or more.',reward:50,prog:function(){return [bestLb()>=10?1:0,1];}},
  {id:'lb50',name:'Monster',desc:'Land a fish of 50 lb or more.',reward:200,prog:function(){return [bestLb()>=50?1:0,1];}},
  {id:'lb100',name:'Legend',desc:'Land a fish of 100 lb or more.',reward:500,prog:function(){return [bestLb()>=100?1:0,1];}},
@@ -1870,6 +2144,15 @@ var ACH=[
  {id:'dawn',name:'Early Bird',desc:'Catch a fish at dawn, 5 to 8 AM.',reward:50,prog:function(){return flag('dawn');}},
  {id:'spend',name:'Big Spender',desc:'Spend 1,000 coins.',reward:100,prog:function(){return [state.spent||0,1000];}},
  {id:'style',name:'Fashionista',desc:'Buy 10 pieces of clothing.',reward:100,prog:function(){return [paidClothes(),10];}},
+ {id:'holes4',name:'Hole Puncher',desc:'Own all 4 holes.',reward:200,prog:function(){return [state.holes.length,4];}},
+ {id:'northern',name:'Road Trip',desc:'Unlock Northern Lake.',reward:100,prog:function(){return [state.lakes.indexOf('northern')>=0?1:0,1];}},
+ {id:'glacier',name:'Into the Mountains',desc:'Unlock Glacier Lake.',reward:300,prog:function(){return [state.lakes.indexOf('glacier')>=0?1:0,1];}},
+ {id:'golden',name:'Golden Touch',desc:'Catch a golden fish.',reward:300,prog:function(){return flag('golden');}},
+ {id:'albino',name:'Ghost Fish',desc:'Catch an albino fish.',reward:200,prog:function(){return flag('albino');}},
+ {id:'legend',name:'Legend Hunter',desc:'Catch a legendary fish.',reward:1000,prog:function(){return flag('legend');}},
+ {id:'legend3',name:'Myth Buster',desc:'Catch all 3 legendary fish.',reward:3000,prog:function(){return [legendsFound(),3];}},
+ {id:'snap',name:'The One That Got Away',desc:'Have a big fish snap your line.',reward:50,prog:function(){return flag('snap');}},
+ {id:'top10',name:'Season Star',desc:'Finish in the top 10 of a season.',reward:500,prog:function(){return flag('top10');}},
  {id:'daily5',name:'Daily Grinder',desc:'Finish 5 daily challenges.',reward:150,prog:function(){return [state.dailyDone||0,5];}}
 ];
 var toastQ=[], toastBusy=false;
@@ -1903,6 +2186,17 @@ function renderAch(){
 
 /* ================= FISH JOURNAL ================= */
 var FACTS={
+ cisco:'Cisco, also called tullibee, swim in big schools in open water. Lake trout, pike and walleye all love to eat them.',
+ kokanee:'Kokanee are sockeye salmon that spend their whole lives in lakes instead of the ocean. They turn bright red when it is time to spawn.',
+ sauger:'Sauger are close cousins of walleye. You can tell them apart by the dark spots on their back fin.',
+ whitefish:'Lake whitefish have a small mouth tucked under a rounded snout, made for picking bugs and tiny creatures off the bottom.',
+ rainbow:'Rainbow trout are named for the pink stripe along their sides. The ones that swim out to the ocean are called steelhead.',
+ splake:'A splake is a cross between a lake trout and a brook trout. Hatcheries raise them and stock them in lakes.',
+ burbot:'Burbot are the only freshwater cod in North America. They spawn in the middle of winter, right under the ice.',
+ char:'Arctic char live farther north than almost any other freshwater fish, and their bellies turn bright orange-red.',
+ oldwhiskers:'Ice fishers on Pine Lake have told stories about Old Whiskers for decades. Nobody knows how old it really is.',
+ ironjaw:'Old Ironjaw is said to have snapped more fishing lines than any fish in the north. Its jaws are as gray as an old anchor.',
+ paleghost:'The Pale Ghost seems to glow in the dark water. Some say it is the oldest fish in Glacier Lake.',
  bluegill:'Bluegill have a dark spot on the back of their gill flap. Males guard their nests and will even nip at swimmers who get too close.',
  perch:'Yellow perch travel in big schools, so where you catch one, there are usually more nearby.',
  crappie:'Crappie love to hide around sunken trees and brush, and they bite best around dawn and dusk.',
@@ -1916,22 +2210,26 @@ var FACTS={
  flathead:'Flathead catfish hunt live fish, mostly at night, and they can grow to over 100 pounds.',
  sturgeon:'Lake sturgeon can live over 100 years, and their family has been around since the time of the dinosaurs.'
 };
-var jSp=null;
+var jSp=null, jLake='pine';
 function renderJournal(){
   var sp=SP_BY_ID[jSp]; if(!sp){ openOv('trophyOv'); return; }
   var r=state.records[sp.id], n=state.counts[sp.id]||0;
   var pic=$('jPic'); pic.innerHTML='';
   var w=Math.min(300,(document.documentElement.clientWidth||360)-90);
   pic.appendChild(fishImg(sp.id,46,r?false:'#24406A',Math.max(3,Math.floor(w/48))));
-  $('jName').textContent=sp.name.toUpperCase();
-  $('jRec').textContent=r?'Your record: '+fmtWeightText(r.lb)+', '+r.inches+' in':'You have not caught one yet';
-  $('jFact').textContent=r?FACTS[sp.id]:'Catch one to unlock its fun fact.';
-  var spots=SPOTS.filter(function(x){return (sp.spots[x.id]||0)>=1;}).sort(function(a,b){return sp.spots[b.id]-sp.spots[a.id];}).map(function(x){return x.name;});
+  $('jName').textContent=sp.legend&&!r?'LEGENDARY FISH':sp.name.toUpperCase();
+  $('jRec').textContent=r?'Your record: '+fmtWeightText(r.lb)+', '+r.inches+' in':sp.legend?'Nobody you know has caught it':'You have not caught one yet';
+  $('jFact').textContent=sp.legend?(r?FACTS[sp.id]:sp.hint):(r?FACTS[sp.id]:'Catch one to unlock its fun fact.');
+  if(sp.legend&&!r){ $('jFacts').innerHTML=''; return; }
+  var where=[]; LAKES.forEach(function(l){ var lk=sp.lakes[l.id]; if(!lk) return; var ss=SPOTS.filter(function(x){return (lk[x.id]||0)>0;}).sort(function(a,b){return lk[b.id]-lk[a.id];}).map(function(x){return x.name;}); if(ss.length) where.push(l.name+': '+ss.join(', ')); });
+  var spots=where;
   var baits=BAITS.filter(function(b){return (sp.baits[b.id]||0)>=1;}).sort(function(a,b){return sp.baits[b.id]-sp.baits[a.id];}).map(function(b){return b.name;});
   var times=['dawn','day','dusk','night'].sort(function(a,b){return ACT[sp.id][b]-ACT[sp.id][a];}).slice(0,2).map(function(x){return PERIOD_NAME[x];});
   function fact(k,v){ return '<div class="fact"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; }
-  $('jFacts').innerHTML=fact('WHERE',spots.join(', ')||'Unknown')+fact('BAIT',baits.join(', ')||'Unknown')+fact('BEST TIME',times.join(', '))+fact('SIZE',fmtWeightText(sp.min)+' to '+fmtWeightText(sp.max))+
-    fact('SHOWS UP AFTER',sp.minWait?fmtDuration(sp.minWait)+' of waiting':'Right away')+fact('YOU CAUGHT',n+(n===1?' fish':' fish'));
+  var vv=state.variants[sp.id]||{};
+  $('jFacts').innerHTML=fact('WHERE',spots.join('<br>')||'Unknown')+fact('BAIT',baits.join(', ')||'Unknown')+fact('BEST TIME',times.join(', '))+fact('SIZE',fmtWeightText(sp.min)+' to '+fmtWeightText(sp.max))+
+    fact('SHOWS UP AFTER',sp.minWait?fmtDuration(sp.minWait)+' of waiting':'Right away')+fact('YOU CAUGHT',n+(n===1?' fish':' fish'))+
+    (sp.legend?'':fact('RARE COLORS','Golden: '+(vv.golden?'found!':'not yet')+'<br>Albino: '+(vv.albino?'found!':'not yet')));
 }
 
 /* ================= SAVE CODE ================= */
@@ -1961,7 +2259,15 @@ function showAway(since){
   if(!state.username||fx||!$('nameOv').hidden) return;
   var now=Date.now(), main='', line=state.line;
   $('awayTime').textContent='You were away for '+fmtDuration((now-since)/60000)+'.';
-  if(line&&hooked(line)){ var info=lineInfo(line); main='<span class="away-big">FISH ON!</span><span class="t">Something bit '+fmtDuration(Math.max(0,now-info.at)/60000)+' ago. It is still on your line.</span>'; }
+  if(state.holes.length>1){
+    var on=0; main=state.holes.map(function(h,i){ var l=h.line, txt;
+      if(l&&hooked(l)){ on++; txt='<b style="font-weight:400;color:var(--gold)">FISH ON!</b> Bit '+fmtDuration(Math.max(0,now-lineInfo(l).at)/60000)+' ago.'; }
+      else if(l) txt='Waiting, '+fmtDuration(effMinutes(l,now))+' in.';
+      else txt='Dry. Cast to start.';
+      return '<span class="t">Hole '+(i+1)+' ('+lakeShort(l?l.lake:h.lake).toLowerCase()+', '+BAIT_BY_ID[l?l.bait:h.bait].name.toLowerCase()+'): '+txt+'</span>'; }).join('');
+    main='<span class="away-big">'+(on?on+(on===1?' FISH ON!':' FISH ON!'):'STILL WAITING')+'</span>'+main;
+  }
+  else if(line&&hooked(line)){ var info=lineInfo(line); main='<span class="away-big">FISH ON!</span><span class="t">Something bit '+fmtDuration(Math.max(0,now-info.at)/60000)+' ago. It is still on your line.</span>'; }
   else if(line) main='<span class="away-big">STILL WAITING</span><span class="t">Your line has been in for '+fmtDuration(effMinutes(line,now))+'. No bite yet.</span>';
   else main='<span class="away-big">LINE IS DRY</span><span class="t">Cast to start fishing.</span>';
   $('awayMain').innerHTML=main;
@@ -2014,8 +2320,30 @@ function flyCoins(from){
   }catch(e){}
 }
 
+/* ================= SEASON PRIZES ================= */
+async function claimSeasonPrize(){
+  var pk=prevSeasonKey();
+  if(!state.username||!lbReady()||state.claims[pk]!=null) return;
+  try{
+    var r=await fetch(lbBase()+'/rest/v1/board?select=name,tag,lb&order=lb.desc&limit=500&period=eq.'+encodeURIComponent(pk),{headers:lbHeaders({})});
+    if(!r.ok) return;
+    var rows=await r.json(), seen={}, list=[];
+    rows.forEach(function(x){ var k=x.name+'#'+x.tag; if(!seen[k]){ seen[k]=1; list.push(k); } });
+    var rank=list.indexOf(state.username+'#'+state.tag)+1;
+    state.claims[pk]=rank||0;
+    if(rank>=1&&rank<=10){
+      var prize=[5000,3000,1500][rank-1]||500;
+      state.coins+=prize; state.flags.top10=1;
+      if(rank<=3&&state.ownedItems.indexOf('hat_champ')<0) state.ownedItems.push('hat_champ');
+      save(); renderHUD(); bumpCoins();
+      queueToast('SEASON RESULTS: you finished #'+rank+' in '+seasonName(pk)+'! +$'+money(prize)+(rank<=3?' and the Champion cap!':''));
+      setTimeout(checkAch,3000);
+    } else save();
+  }catch(e){}
+}
+
 /* ================= FISH ALERT ================= */
-var pipWin=null, alertedSeed=null, miniKey='';
+var pipWin=null, alerted={}, miniKey='';
 function inFrame(){ try{ return window.self!==window.top; }catch(e){ return true; } }
 function canPip(){ return 'documentPictureInPicture' in window && !inFrame(); }
 function canNotify(){ return 'Notification' in window; }
@@ -2053,9 +2381,11 @@ function buildMini(w){
 function renderMini(){
   if(!pipWin||pipWin.closed) return;
   var d=pipWin.document, m=d.getElementById('m'); if(!m) return;
-  var line=state.line, on=!!(line&&hooked(line)), catching=!!(fx&&!fx.out);
-  var mode=catching?'catch':on?'on':line?'wait':'none';
-  d.getElementById('mt').textContent=line?BAIT_BY_ID[line.bait].name.toUpperCase():'';
+  var line=state.line, onHoles=[], catching=!!(fx&&!fx.out);
+  state.holes.forEach(function(h,i){ if(h.line&&hooked(h.line)) onHoles.push(i+1); });
+  if(!line){ state.holes.some(function(h){ if(h.line){ line=h.line; return true; } return false; }); }
+  var on=onHoles.length>0, mode=catching?'catch':on?'on':line?'wait':'none';
+  d.getElementById('mt').textContent=state.holes.length>1?state.holes.filter(function(h){return h.line;}).length+' LINES OUT':(line?BAIT_BY_ID[line.bait].name.toUpperCase():'');
   if(mode!==miniKey){
     miniKey=mode; m.classList.toggle('on',mode==='on');
     var cv=d.getElementById('mf'), src=fishCanvas(catching&&state.last?state.last.sp:'largemouth',22,mode==='on'||mode==='catch'?false:'#2C5088');
@@ -2065,17 +2395,19 @@ function renderMini(){
   }
   var ms=d.getElementById('ms'), mx=d.getElementById('mx');
   if(mode==='catch'){ ms.textContent='NICE CATCH!'; mx.textContent='Check the game tab'; }
-  else if(mode==='on'){ ms.textContent='FISH ON!'; mx.textContent='Go reel it in!'; }
+  else if(mode==='on'){ ms.textContent='FISH ON!'; mx.textContent=state.holes.length>1?'Hole '+onHoles.join(' and ')+'. Go reel it in!':'Go reel it in!'; }
   else if(mode==='wait'){ ms.textContent=fmtClock(effMinutes(line,Date.now())*60); mx.textContent='Waiting for a bite...'; }
   else { ms.textContent='NO LINE OUT'; mx.textContent='Cast in the game tab'; }
 }
 function checkBiteAlert(){
-  var line=state.line;
-  if(!line||!hooked(line)||alertedSeed===line.seed) return;
-  alertedSeed=line.seed;
-  if(!document.hidden||pipWin||!notifyActive()) return;
-  try{ var n=new Notification('FISH ON! | Below Zero',{body:'Something bit your '+BAIT_BY_ID[line.bait].name.toLowerCase()+' at the '+SPOT_BY_ID[line.spot].name+'. Go reel it in!',icon:fishIcon(),silent:true,tag:'slowbite-bite'});
-    n.onclick=function(){ try{ window.focus(); }catch(e){} n.close(); }; }catch(e){}
+  state.holes.forEach(function(h,i){
+    var line=h.line;
+    if(!line||!hooked(line)||alerted[line.seed]) return;
+    alerted[line.seed]=1;
+    if(!document.hidden||pipWin||!notifyActive()) return;
+    try{ var n=new Notification('FISH ON! | Below Zero',{body:'Something bit your '+BAIT_BY_ID[line.bait].name.toLowerCase()+(state.holes.length>1?' at hole '+(i+1):'')+' on '+LAKE_BY_ID[line.lake||'pine'].name+'. Go reel it in!',icon:fishIcon(),silent:true,tag:'slowbite-bite-'+i});
+      n.onclick=function(){ try{ window.focus(); }catch(e){} n.close(); }; }catch(e){}
+  });
 }
 async function openAlert(){
   if(pipWin){ try{ pipWin.close(); }catch(e){} pipWin=null; renderAlertBtn(); return; }
@@ -2127,9 +2459,15 @@ function start(data){
     reelIn();
   });
   $('keep').addEventListener('click',endFx);
-  $('sellNow').addEventListener('click',function(){ trySell([state.last.uid],$('sellNow')).then(function(got){ if(got){ endFx(); toast('Sold for $'+money(got)+'!',2000,true); } }); });
+  $('sellNow').addEventListener('click',function(){ if(state.last&&state.last.snap){ var up=state.lineLvl<LINE_TESTS.length-1; endFx(); if(up) openOv('gearOv'); return; } trySell([state.last.uid],$('sellNow')).then(function(got){ if(got){ endFx(); toast('Sold for $'+money(got)+'!',2000,true); } }); });
   $('openMenu').addEventListener('click',function(){ openOv('menuOv'); });
   $('alertBtn').addEventListener('click',openAlert);
+  $('holes').addEventListener('click',function(e){ var b=e.target.closest('[data-hole]'); if(b) selectHole(+b.dataset.hole); });
+  $('gearList').addEventListener('click',function(e){ var b=e.target.closest('[data-gear]'); if(b) gearBuy(b.dataset.gear); });
+  $('lakesSeg').addEventListener('click',function(e){ var b=e.target.closest('[data-lake]'); if(!b) return;
+    if(state.lakes.indexOf(b.dataset.lake)<0){ openOv('gearOv'); return; }
+    if(busyLine()){ toast('Reel in first to change lakes.'); return; }
+    state.lake=b.dataset.lake; fishes=[]; save(); renderAll(); });
   $('saveCopy').addEventListener('click',copySave);
   $('saveLoad').addEventListener('click',loadSave);
   $('awayOk').addEventListener('click',function(){ $('awayOv').hidden=true; });
@@ -2137,6 +2475,7 @@ function start(data){
   $('coachSkip').addEventListener('click',function(){ state.tut=99; save(); updateCoach(); });
   $('grid').addEventListener('click',function(e){ var b=e.target.closest('[data-sp]'); if(b){ jSp=b.dataset.sp; openOv('journalOv'); } });
   $('jBack').addEventListener('click',function(){ openOv('trophyOv'); });
+  $('jLakes').addEventListener('click',function(e){ var b=e.target.closest('[data-jlake]'); if(b){ jLake=b.dataset.jlake; renderTrophies(); } });
   $('nameForm').addEventListener('submit',saveName);
   $('nameClose').addEventListener('click',function(){ $('nameOv').hidden=true; });
   $('lbRename').addEventListener('click',function(){ openName(false); });
@@ -2144,9 +2483,10 @@ function start(data){
   $('lbPeriods').addEventListener('click',function(e){ var b=e.target.closest('[data-period]'); if(!b) return; lbPeriod=b.dataset.period;
     $('lbPeriods').querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed',String(x===b)); }); renderBoard(); });
   setInterval(function(){ if(state.username) lbSync(); },10*60000);
+  setTimeout(claimSeasonPrize,4000);
   try{ if(!inFrame()){ var fi=document.createElement('link'); fi.rel='icon'; fi.href=fishIcon(); document.head.appendChild(fi); } }catch(e){}
   renderAlertBtn();
-  if(state.line&&hooked(state.line)) alertedSeed=state.line.seed;
+  state.holes.forEach(function(h){ if(h.line&&hooked(h.line)) alerted[h.line.seed]=1; });
   $('menuList').addEventListener('click',function(e){ var b=e.target.closest('[data-go]'); if(b) openOv(b.dataset.go); });
   document.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click',closeAll); });
   document.querySelectorAll('[data-back]').forEach(function(b){ b.addEventListener('click',function(){ openOv('menuOv'); }); });
