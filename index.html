@@ -1,0 +1,1684 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Below Zero: an idle pixel ice fishing game. Cast a line, wait, and land the biggest fish in the lake.">
+<title>Below Zero</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<style>
+/* Layout: one full-screen pixel scene (side view of an ice hole) with a game HUD on top, a control console docked at the bottom, and pop-up screens for the menu and shops. Deliberately single-theme: a winter night arcade palette. */
+:root{
+  --night:#0A1530; --panel:#14294C; --panel-hi:#2C5088; --panel-lo:#0A1834; --edge:#050B1C;
+  --ice:#EAF5FF; --frost:#9FD3F2; --muted:#93B2D2;
+  --gold:#FFC94A; --gold-lo:#C98A12; --gold-hi:#FFE7A0; --gold-ink:#3A2200;
+  --red:#E5484D; --red-lo:#9E2A30; --red-hi:#FF8A8D;
+  --sonar:#5CF08A; --sonar-dim:#2A7A47; --sonar-bg:#03140B;
+  --pixel:'Press Start 2P',ui-monospace,Menlo,monospace;
+  --term:'VT323',ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--night);color:var(--ice);font:20px/1.15 var(--term);overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+h1,h2,h3{text-wrap:balance;margin:0;font-weight:400}
+canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
+
+.game{position:relative;height:100%;min-height:560px;overflow:hidden;background:var(--night)}
+#scene{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges}
+.ui{
+  position:absolute;inset:0;display:flex;flex-direction:column;pointer-events:none;
+  padding-block:10px 12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.ui > *{pointer-events:auto}
+.spacer{flex:1;pointer-events:none}
+
+/* HUD */
+.hud{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.brand{display:grid;gap:6px;min-width:0;justify-items:start}
+.logo{font:16px/1 var(--pixel);letter-spacing:.04em;color:var(--ice);text-shadow:3px 3px 0 var(--edge);margin-bottom:2px}
+.logo b{color:var(--gold);font-weight:400}
+.chip{
+  display:inline-flex;gap:8px;align-items:center;
+  padding:5px 9px 4px;background:rgba(5,11,28,.72);border:2px solid var(--edge);
+  font:20px/1 var(--term);color:var(--ice);white-space:nowrap
+}
+.chip .k{font:9px/1 var(--pixel);color:var(--gold)}
+.coin{width:12px;height:12px;flex:none;background:var(--gold);box-shadow:inset -2px -2px 0 var(--gold-lo),inset 2px 2px 0 var(--gold-hi);border:2px solid var(--gold-ink)}
+.chip.money{color:var(--gold)}
+.chip.bump{animation:bump .5s steps(4)}
+@keyframes bump{30%{transform:scale(1.18);background:var(--gold);color:var(--gold-ink)}}
+.hud-btns{display:flex;gap:8px;flex:none;align-items:flex-start}
+.pbtn.on{background:var(--sonar-dim);box-shadow:inset 0 3px 0 #3FB06A,inset 0 -3px 0 #1A5230}
+.pbtn{
+  position:relative;font:10px/1 var(--pixel);padding:10px 10px 9px;cursor:pointer;
+  background:var(--panel);color:var(--ice);border:3px solid var(--edge);
+  box-shadow:inset 0 3px 0 var(--panel-hi),inset 0 -3px 0 var(--panel-lo);
+}
+.pbtn:active{transform:translateY(2px)}
+.pbtn.big{font-size:12px;padding:13px 14px 12px}
+.pbtn.gold{background:var(--gold);color:var(--gold-ink);border-color:var(--gold-ink);box-shadow:inset 0 3px 0 var(--gold-hi),inset 0 -3px 0 var(--gold-lo)}
+.pbtn.danger{background:var(--red);border-color:#3A0A0C;box-shadow:inset 0 3px 0 var(--red-hi),inset 0 -3px 0 var(--red-lo)}
+.pbtn:disabled{cursor:not-allowed;filter:saturate(.3) brightness(.75)}
+.badge{position:absolute;top:-10px;right:-10px;min-width:22px;padding:4px 4px 3px;background:var(--red);color:#fff;border:2px solid #3A0A0C;font:9px/1 var(--pixel)}
+.pbtn:focus-visible,.go:focus-visible,.seg button:focus-visible,.bait:focus-visible,.x:focus-visible,.mbtn:focus-visible,.item:focus-visible,.tabs button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+.center{display:grid;justify-items:center;gap:8px;margin-top:10px;text-align:center;pointer-events:none}
+.clock{font:clamp(22px,6vw,34px)/1 var(--pixel);color:var(--ice);font-variant-numeric:tabular-nums;
+  text-shadow:3px 0 0 var(--edge),-3px 0 0 var(--edge),0 3px 0 var(--edge),0 -3px 0 var(--edge),3px 3px 0 var(--edge)}
+.clock.ready{color:var(--gold);font-size:clamp(18px,5vw,26px)}
+.status{font:22px/1.1 var(--term);color:var(--ice);text-shadow:2px 2px 0 var(--edge);max-width:34ch}
+.status .n{color:var(--gold)}
+
+/* Console */
+.panel{
+  align-self:center;width:min(560px,100%);display:grid;gap:10px;padding:12px;
+  background:var(--panel);border:4px solid var(--edge);
+  box-shadow:inset 0 4px 0 var(--panel-hi),inset 0 -4px 0 var(--panel-lo);
+  clip-path:polygon(0 6px,6px 6px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 6px),0 calc(100% - 6px));
+}
+.lbl{font:9px/1 var(--pixel);color:var(--gold);letter-spacing:.06em}
+.lbl-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+.desc{font:18px/1 var(--term);color:var(--muted);text-align:right;min-width:0}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.seg button{
+  cursor:pointer;padding:9px 4px 7px;display:grid;gap:5px;justify-items:center;
+  background:var(--panel-lo);border:3px solid var(--edge);color:var(--muted);
+  font:9px/1.2 var(--pixel);
+}
+.seg button .s{font:16px/1 var(--term);color:var(--muted)}
+.seg button[aria-pressed="true"]{background:#2F7C9A;color:#fff;box-shadow:inset 0 3px 0 #5FB2CF,inset 0 -3px 0 #1D5468}
+.seg button[aria-pressed="true"] .s{color:#D6F2FF}
+.seg button:disabled{cursor:not-allowed;background:repeating-linear-gradient(45deg,var(--panel-lo) 0 6px,#0F2040 6px 12px);color:#5A7598}
+.seg button:disabled .s{color:var(--red-hi)}
+.baits{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.bait{
+  cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 5px;min-width:0;text-align:center;
+  background:var(--panel-lo);border:3px solid var(--edge);color:var(--ice);font:18px/1 var(--term)
+}
+.bait canvas{width:32px;height:32px;flex:none}
+.bait span{min-width:0;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bait[aria-pressed="true"]{border-color:var(--gold);background:#1D3866}
+.bait.locked canvas{opacity:.35}
+.bait.locked span{color:var(--gold)}
+
+.go{
+  width:100%;min-height:58px;cursor:pointer;border:4px solid var(--gold-ink);
+  font:20px/1 var(--pixel);letter-spacing:.06em;
+  background:var(--gold);color:var(--gold-ink);
+  box-shadow:inset 0 -7px 0 var(--gold-lo),inset 0 4px 0 var(--gold-hi);
+}
+.go:active{transform:translateY(2px);box-shadow:inset 0 -3px 0 var(--gold-lo),inset 0 3px 0 var(--gold-hi)}
+.go.reel{background:var(--red);color:#fff;border-color:#3A0A0C;box-shadow:inset 0 -7px 0 var(--red-lo),inset 0 4px 0 var(--red-hi)}
+.go.alt{background:var(--panel-lo);color:var(--ice);border-color:var(--edge);box-shadow:inset 0 -6px 0 #06102A,inset 0 4px 0 var(--panel-hi);font-size:14px}
+.go.arm{animation:pulse .5s steps(2) infinite}
+.go:disabled{cursor:not-allowed;filter:saturate(.4) brightness(.8)}
+@keyframes pulse{50%{filter:brightness(1.25)}}
+
+.toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font:18px/1 var(--term);color:var(--muted);justify-content:center}
+.toggle input{position:absolute;opacity:0;width:1px;height:1px}
+.toggle .box{width:34px;height:18px;border:3px solid var(--edge);background:var(--panel-lo);position:relative;flex:none}
+.toggle .box::after{content:"";position:absolute;top:1px;left:1px;width:10px;height:10px;background:var(--muted)}
+.toggle input:checked + .box{background:var(--sonar-dim)}
+.toggle input:checked + .box::after{left:auto;right:1px;background:var(--sonar)}
+.toggle input:focus-visible + .box{outline:3px solid var(--gold);outline-offset:2px}
+
+.loadout{cursor:pointer;display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;background:var(--panel-lo);border:3px solid var(--edge);color:var(--ice);text-align:left}
+.loadout canvas{width:24px;height:24px;flex:none}
+.loadout .lo-t{flex:1;min-width:0;font:9px/1.4 var(--pixel);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.loadout .lo-c{font:9px/1 var(--pixel);color:var(--gold);flex:none}
+.loadout:hover{border-color:var(--gold)}
+.loadout:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.catchui{display:grid;gap:8px;justify-items:center;text-align:center;animation:pop .3s steps(4) both}
+.catchui .c-weight{font-size:clamp(24px,7vw,32px)}
+
+/* Sonar */
+.sonar{
+  position:relative;overflow:hidden;padding:9px 11px 10px;display:grid;gap:6px;
+  background:var(--sonar-bg);border:3px solid #0E3A22;color:var(--sonar);font:20px/1 var(--term);
+}
+.sonar::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px)}
+.sonar .sweep{position:absolute;left:0;right:0;height:22px;top:-22px;background:linear-gradient(transparent,rgba(92,240,138,.12));animation:sweep 3s linear infinite;pointer-events:none}
+@keyframes sweep{to{top:100%}}
+.s-head{display:flex;justify-content:space-between;gap:8px;font:8px/1.3 var(--pixel);color:var(--sonar);flex-wrap:wrap}
+.s-head span:last-child{color:var(--sonar-dim)}
+.s-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(64px,40%) 40px;gap:8px;align-items:center}
+.s-row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{display:block;height:10px;background:repeating-linear-gradient(90deg,#0E3A22 0 6px,transparent 6px 8px)}
+.blocks{display:block;height:10px;background:repeating-linear-gradient(90deg,var(--sonar) 0 6px,transparent 6px 8px);clip-path:inset(0 calc(100% - var(--w)) 0 0)}
+.s-row .p{text-align:right;font-variant-numeric:tabular-nums}
+.s-msg{line-height:1.1}
+.s-list{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.meter .blocks{background:repeating-linear-gradient(90deg,var(--gold) 0 6px,transparent 6px 8px)}
+.meter .p,.meter .nm{color:var(--gold)}
+.s-next{color:var(--sonar-dim)}
+.s-next b{color:var(--sonar);font-weight:400}
+
+/* Toast */
+.toast{
+  position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);z-index:30;
+  max-width:min(90%,420px);padding:10px 14px;background:var(--red);color:#fff;border:3px solid #3A0A0C;
+  font:20px/1.1 var(--term);text-align:center;box-shadow:0 4px 0 var(--edge)
+}
+.toast.good{background:var(--gold);color:var(--gold-ink);border-color:var(--gold-ink)}
+
+/* Overlays */
+.overlay{position:absolute;inset:0;z-index:10;display:grid;place-items:center;background:rgba(3,7,18,.72);
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.dialog{
+  position:relative;width:min(100%,440px);max-height:100%;overflow:auto;padding:18px 16px 16px;display:grid;gap:12px;align-content:start;
+  background:var(--panel);border:4px solid var(--edge);
+  box-shadow:inset 0 4px 0 var(--panel-hi),inset 0 -4px 0 var(--panel-lo);
+}
+.dialog.wide{width:min(100%,680px)}
+.d-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.d-title{font:14px/1.2 var(--pixel);color:var(--gold);text-shadow:2px 2px 0 var(--edge)}
+.d-tools{display:flex;gap:8px;align-items:center}
+.x{cursor:pointer;width:38px;height:38px;flex:none;background:var(--panel-lo);border:3px solid var(--edge);font:12px/1 var(--pixel);color:var(--ice)}
+.note{font:18px/1.15 var(--term);color:var(--muted);margin:0}
+
+/* Menu */
+.menu-list{display:grid;gap:8px}
+.mbtn{
+  cursor:pointer;display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;
+  padding:10px 12px;background:var(--panel-lo);border:3px solid var(--edge);color:var(--ice);
+  box-shadow:inset 0 3px 0 #1A3260;
+}
+.mbtn:hover{border-color:var(--gold)}
+.mbtn canvas{width:40px;height:40px}
+.mbtn .t{font:11px/1.3 var(--pixel);display:block}
+.mbtn .s{font:18px/1.1 var(--term);color:var(--muted);display:block;margin-top:4px}
+.mbtn .arrow{font:12px/1 var(--pixel);color:var(--gold)}
+.wallet{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:var(--panel-lo);border:3px solid var(--edge)}
+.wallet .v{font:18px/1 var(--pixel);color:var(--gold);display:flex;gap:10px;align-items:center}
+
+/* Catch card */
+.catch{justify-items:center;text-align:center;animation:pop .35s steps(5) both}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.fish-on{font:clamp(22px,7vw,30px)/1 var(--pixel);color:var(--gold);text-shadow:3px 3px 0 var(--edge)}
+.ribbons{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.ribbon{font:9px/1 var(--pixel);padding:7px 8px 6px;background:var(--red);color:#fff;border:2px solid #3A0A0C}
+.ribbon.g{background:var(--sonar);color:#04210F;border-color:#04210F}
+.ribbon.b{background:#2F7C9A;border-color:#0B2E3C}
+.ribbon.p{background:var(--panel-lo);color:var(--muted);border-color:var(--edge)}
+.stand{width:100%;display:grid;place-items:center;padding:14px 8px;background:radial-gradient(circle at 50% 60%,#1E3C6A,var(--panel-lo) 70%);border:3px solid var(--edge)}
+.stand canvas{image-rendering:pixelated;max-width:100%}
+.c-name{font:13px/1.3 var(--pixel);color:var(--ice)}
+.c-weight{font:clamp(26px,8vw,36px)/1 var(--pixel);color:var(--gold);text-shadow:3px 3px 0 var(--edge)}
+.c-len{font:22px/1 var(--term);color:var(--muted)}
+.facts{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.fact{background:var(--panel-lo);border:2px solid var(--edge);padding:7px 6px;display:grid;gap:4px;min-width:0;text-align:left}
+.fact .k{font:8px/1 var(--pixel);color:var(--gold)}
+.fact .v{font:20px/1 var(--term);overflow-wrap:anywhere}
+.two{width:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.two .go{font-size:14px;min-height:54px}
+.sparks{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.sparks i{position:absolute;left:50%;top:38%;width:6px;height:6px;background:var(--gold);animation:spark .9s steps(9) forwards}
+@keyframes spark{to{transform:translate(var(--dx),var(--dy));opacity:0}}
+
+/* Lists (bait shop, bucket) */
+.rows{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px;background:var(--panel-lo);border:3px solid var(--edge)}
+.row .ic{display:grid;place-items:center;min-width:48px}
+.row .nm{font:11px/1.3 var(--pixel);color:var(--ice)}
+.row .sub{font:18px/1.1 var(--term);color:var(--muted);margin-top:4px}
+.row .sub b{color:var(--ice);font-weight:400}
+.row .own{font:9px/1 var(--pixel);color:var(--sonar)}
+.row.selected{border-color:var(--gold)}
+.sumbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;background:var(--panel-lo);border:3px solid var(--edge)}
+.sumbar .v{font:20px/1.1 var(--term)}
+.sumbar .v b{color:var(--gold);font-weight:400}
+.empty{padding:22px 10px;text-align:center;color:var(--muted);background:var(--panel-lo);border:3px dashed #23406E}
+
+/* Clothes shop */
+.dress{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;padding:12px;background:radial-gradient(circle at 50% 30%,#2A4C7E,var(--panel-lo) 75%);border:3px solid var(--edge)}
+.dress canvas{width:96px;height:144px}
+.dress .info{display:grid;gap:6px;min-width:0}
+.dress .try{font:9px/1.3 var(--pixel);color:var(--sonar)}
+.dress .iname{font:12px/1.3 var(--pixel)}
+.dress .iprice{font:20px/1 var(--term);color:var(--gold)}
+.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.tabs button{cursor:pointer;padding:9px 2px 8px;background:var(--panel-lo);border:3px solid var(--edge);color:var(--muted);font:8px/1 var(--pixel)}
+.tabs button[aria-pressed="true"]{background:#2F7C9A;color:#fff}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.item{cursor:pointer;display:grid;gap:5px;justify-items:center;padding:8px 4px 7px;background:var(--panel-lo);border:3px solid var(--edge);color:var(--ice);min-width:0}
+.item canvas{width:36px;height:54px}
+.item .in{font:16px/1 var(--term);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.item .ip{font:16px/1 var(--term);color:var(--gold)}
+.item .ip.own{color:var(--muted)}
+.item .ip.worn{color:var(--sonar)}
+.item[aria-pressed="true"]{border-color:var(--gold);background:#1D3866}
+.buybar{position:sticky;bottom:-16px;margin:0 -16px -16px;padding:12px 16px 16px;background:var(--panel);border-top:3px solid var(--edge)}
+
+/* Name + leaderboard */
+#nameOv{z-index:20}
+.field{width:100%;padding:12px;background:var(--panel-lo);border:3px solid var(--edge);color:var(--ice);font:24px/1 var(--term)}
+.field:focus{outline:3px solid var(--gold);outline-offset:2px}
+.err{margin:0;min-height:1.2em;font:18px/1.1 var(--term);color:var(--red-hi)}
+.tagline{font:12px/1.3 var(--pixel);color:var(--gold)}
+.lb-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.lb-tools select{padding:8px 10px;background:var(--panel-lo);border:3px solid var(--edge);color:var(--ice);font:20px/1 var(--term);max-width:100%}
+.lb-tools select:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.lb{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.lb li{display:grid;grid-template-columns:34px 44px minmax(0,1fr);gap:10px;align-items:center;padding:7px 10px;background:var(--panel-lo);border:3px solid var(--edge)}
+.lb .rk{font:11px/1 var(--pixel);color:var(--muted);text-align:center}
+.lb li:nth-child(1) .rk{color:var(--gold)}.lb li:nth-child(2) .rk{color:#D8E0EA}.lb li:nth-child(3) .rk{color:#E0965A}
+.lb .ic{display:grid;place-items:center}
+.lb .who{min-width:0}
+.lb .nm{font:22px/1.1 var(--term);color:var(--ice);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb .nm small{font:16px/1 var(--term);color:var(--muted)}
+.lb .sp{font:18px/1.1 var(--term);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb .sp b{font-weight:400;color:var(--gold)}
+.lb .wt{font:20px/1 var(--term);color:var(--gold);text-align:right;white-space:nowrap}
+.lb li.me{border-color:var(--gold);background:#1D3866}
+.lb li.gap{display:block;text-align:center;padding:2px;background:none;border:0;color:var(--muted)}
+.me-line{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;background:var(--panel-lo);border:3px solid var(--edge)}
+
+/* Trophy room */
+.best{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:10px;background:var(--panel-lo);border:3px solid var(--edge)}
+.best .stand{width:auto;padding:8px}
+.best .w{font:clamp(18px,5vw,24px)/1 var(--pixel);color:var(--gold)}
+.best .t{font:20px/1.1 var(--term);color:var(--muted);margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (min-width:600px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.card{display:grid;gap:6px;justify-items:center;padding:10px 8px;background:var(--panel-lo);border:3px solid var(--edge);text-align:center;min-width:0}
+.card canvas{image-rendering:pixelated;max-width:100%;height:auto}
+.card .nm{font:8px/1.4 var(--pixel);color:var(--ice)}
+.card .v{font:20px/1 var(--term);color:var(--gold)}
+.card.no .nm,.card.no .v{color:var(--muted)}
+.card .pic{min-height:60px;display:grid;place-items:center;width:100%}
+.recent{list-style:none;margin:0;padding:0;display:grid}
+.recent li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:6px 0;border-top:2px dashed #23406E}
+.recent li:first-child{border-top:0}
+.recent .w{color:var(--gold)}
+.recent .m{color:var(--muted);text-align:right}
+.tag{font:7px/1 var(--pixel);padding:3px 4px;margin-left:6px;border:1px solid var(--muted);color:var(--muted);vertical-align:2px}
+.help{margin:0;padding-left:20px;display:grid;gap:8px;font:20px/1.15 var(--term)}
+.reset-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+@media (max-height:660px){
+  .center{margin-top:4px}
+  .seg button{padding:7px 4px 5px}
+  .go{min-height:50px}
+}
+@media (prefers-reduced-motion: reduce){
+  .catch,.catchui,.go.arm,.sonar .sweep,.sparks i,.chip.bump{animation:none}
+  .sonar .sweep{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="game" id="game">
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <div class="ui">
+    <header class="hud">
+      <div class="brand">
+        <h1 class="logo">BELOW <b>ZERO</b></h1>
+        <div class="chip money" id="coinChip" title="Coins"><span class="coin" aria-hidden="true"></span><span id="coinTxt">0</span></div>
+        <div class="chip" id="bestChip"><span class="k">BEST</span><span id="bestTxt">NONE YET</span></div>
+      </div>
+      <div class="hud-btns"><button class="pbtn big" id="alertBtn" type="button" hidden title="Show a small window or pop-up when a fish bites">FISH ALERT</button><button class="pbtn big" id="openMenu" type="button">MENU<span class="badge" id="menuBadge" hidden></span></button></div>
+    </header>
+
+    <div class="center" id="center">
+      <div class="clock ready" id="clock">READY</div>
+      <div class="status" id="status">Pick a spot and bait, then cast.</div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <section class="panel" id="panel" aria-label="Fishing controls">
+      <button class="loadout" id="loadout" type="button" aria-label="Change spot and bait"></button>
+      <div class="sonar" id="sonar" hidden>
+        <div class="sweep"></div>
+        <div class="s-head"><span>FISH FINDER</span><span id="sonarWhere"></span></div>
+        <div class="s-row meter"><span class="nm">SIZE LIMIT</span><span class="track"><span class="blocks" id="meterBar" style="--w:10%"></span></span><span class="p" id="meterPct">0%</span></div>
+        <ul class="s-list" id="sonarList"></ul>
+        <div class="s-next" id="sonarNext"></div>
+      </div>
+      <div class="catchui" id="catchUI" hidden>
+        <span class="lbl">YOU CAUGHT</span>
+        <div class="ribbons" id="ribbons"></div>
+        <div class="c-name" id="catchName"></div>
+        <div class="c-weight" id="catchWeight"></div>
+        <div class="c-len" id="catchLen"></div>
+        <div class="facts" id="catchFacts"></div>
+        <div class="two" id="catchBtns"><button class="go" id="sellNow" type="button">SELL</button><button class="go alt" id="keep" type="button">KEEP</button></div>
+      </div>
+      <button class="go" id="go" type="button">CAST</button>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <!-- MENU -->
+  <div class="overlay" id="menuOv" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+      <div class="d-head"><h2 class="d-title" id="menuTitle">MENU</h2><button class="x" type="button" data-close aria-label="Close">X</button></div>
+      <div class="wallet"><span class="lbl">YOUR COINS</span><span class="v"><span class="coin"></span><span id="menuCoins">0</span></span></div>
+      <div class="menu-list" id="menuList"></div>
+    </div>
+  </div>
+
+  <!-- BAIT SHOP -->
+  <div class="overlay" id="baitOv" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="baitTitle">
+      <div class="d-head"><h2 class="d-title" id="baitTitle">BAIT SHOP</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <div class="wallet"><span class="lbl">YOUR COINS</span><span class="v"><span class="coin"></span><span data-coins>0</span></span></div>
+      <p class="note">Bait is yours forever once you buy it. Better bait brings bigger fish, but they take longer to show up.</p>
+      <ul class="rows" id="baitList"></ul>
+    </div>
+  </div>
+
+  <!-- CLOTHES SHOP -->
+  <div class="overlay" id="shopOv" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+      <div class="d-head"><h2 class="d-title" id="shopTitle">CLOTHES SHOP</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <div class="dress">
+        <canvas class="px" id="dressCv" width="12" height="18" role="img" aria-label="Your angler"></canvas>
+        <div class="info">
+          <span class="try" id="dressTry"></span>
+          <span class="iname" id="dressName"></span>
+          <span class="iprice" id="dressPrice"></span>
+          <span class="chip money" style="justify-self:start"><span class="coin"></span><span data-coins>0</span></span>
+        </div>
+      </div>
+      <div class="tabs" id="shopTabs"></div>
+      <div class="items" id="shopItems"></div>
+      <div class="buybar"><button class="go" id="shopAction" type="button">WEAR</button></div>
+    </div>
+  </div>
+
+  <!-- BUCKET -->
+  <div class="overlay" id="bucketOv" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="bucketTitle">
+      <div class="d-head"><h2 class="d-title" id="bucketTitle">FISH BUCKET</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <div class="sumbar"><span class="v" id="bucketSum"></span><button class="pbtn gold" id="sellAll" type="button">SELL ALL</button></div>
+      <ul class="rows" id="bucketList"></ul>
+    </div>
+  </div>
+
+  <!-- TACKLE -->
+  <div class="overlay" id="tackleOv" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="tackleTitle">
+      <div class="d-head"><h2 class="d-title" id="tackleTitle">TACKLE BOX</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <p class="note" id="tackleNote" hidden style="color:var(--red-hi)">Reel in your line first to change your spot or bait.</p>
+      <div><div class="lbl-row"><span class="lbl">SPOT</span><span class="desc" id="spotDesc"></span></div><div class="seg" id="spots"></div></div>
+      <div><div class="lbl-row"><span class="lbl">BAIT</span><span class="desc" id="baitDesc"></span></div><div class="baits" id="baits"></div></div>
+      <label class="toggle" id="practiceRow" for="practice"><input type="checkbox" id="practice"><span class="box"></span><span>Fast time (practice, can't sell)</span></label>
+      <button class="go" id="tackleDone" type="button">GO FISHING</button>
+    </div>
+  </div>
+
+  <!-- NAME -->
+  <div class="overlay" id="nameOv" hidden>
+    <form class="dialog" id="nameForm" role="dialog" aria-modal="true" aria-labelledby="nameTitle" novalidate>
+      <div class="d-head"><h2 class="d-title" id="nameTitle">WELCOME TO BELOW ZERO</h2><button class="x" type="button" id="nameClose" aria-label="Close" hidden>X</button></div>
+      <p class="note" style="color:var(--ice)">Pick a username for the world leaderboard. Your biggest fish shows up there for everyone to see.</p>
+      <label class="lbl" for="nameInput">USERNAME</label>
+      <input class="field" id="nameInput" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="IceKing_22">
+      <p class="err" id="nameErr" aria-live="polite"></p>
+      <p class="note">2 to 16 letters, numbers or _. Don't use your real name. You'll get a number like #4821 so nobody can copy you.</p>
+      <button class="go" id="nameGo" type="submit">START FISHING</button>
+    </form>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="overlay" id="boardOv" hidden>
+    <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="boardTitle">
+      <div class="d-head"><h2 class="d-title" id="boardTitle">WORLD LEADERBOARD</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <div class="lb-tools">
+        <label class="lbl" for="lbSpecies">BIGGEST FISH</label>
+        <select id="lbSpecies"></select>
+      </div>
+      <ul class="lb" id="lbList"></ul>
+      <div class="me-line"><span class="v" id="lbMe"></span><button class="pbtn" type="button" id="lbRename">CHANGE NAME</button></div>
+      <p class="note" id="lbNote">Your biggest fish gets posted automatically. Practice fish never count.</p>
+    </div>
+  </div>
+
+  <!-- TROPHIES -->
+  <div class="overlay" id="trophyOv" hidden>
+    <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="trophyTitle">
+      <div class="d-head"><h2 class="d-title" id="trophyTitle">TROPHY ROOM</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <div id="bestBox"></div>
+      <div class="stats" id="stats"></div>
+      <div class="lbl">SPECIES</div>
+      <div class="grid" id="grid"></div>
+      <div class="lbl">RECENT CATCHES</div>
+      <ul class="recent" id="recent"></ul>
+      <p class="note">Your progress is saved in this browser only. A different device or a cleared browser starts over.</p>
+      <div class="reset-row">
+        <button class="pbtn" id="reset" type="button">RESET GAME</button>
+        <span id="resetAsk" class="reset-row" hidden><span class="note" style="color:var(--ice)">Erase coins, gear and catches?</span><button class="pbtn danger" id="resetYes" type="button">ERASE</button><button class="pbtn" id="resetNo" type="button">KEEP</button></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- HELP -->
+  <div class="overlay" id="helpOv" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="d-head"><h2 class="d-title" id="helpTitle">HOW TO PLAY</h2><div class="d-tools"><button class="pbtn" type="button" data-back>MENU</button><button class="x" type="button" data-close aria-label="Close">X</button></div></div>
+      <ul class="help">
+        <li>You start with <span style="color:var(--gold)">worms</span>. They get lots of bites, but only tiny fish go for them.</li>
+        <li>Bites are random. When something bites, you'll see <span style="color:var(--gold)">FISH ON!</span> and it stays hooked until you reel it in. Reel in before a bite and your hook comes up empty.</li>
+        <li>Fish go into your bucket. Sell them for coins right away, or later from the menu.</li>
+        <li>Spend coins in the <span style="color:var(--gold)">Bait Shop</span>. Better bait brings bigger fish that pay more, but you have to wait longer.</li>
+        <li>The <span style="color:var(--gold)">size limit</span> goes up until a fish bites. The clock keeps running even with this page closed.</li>
+        <li>Weedline opens after 1 hour of total fishing. The Deep Hole opens after 8 hours.</li>
+        <li>Your biggest fish is posted to the <span style="color:var(--gold)">world leaderboard</span> under your username automatically.</li>
+        <li>Spend leftover coins in the <span style="color:var(--gold)">Clothes Shop</span> to dress up your angler.</li>
+        <li>Bigger bait gets fewer bites, but a fish that bites late in a long wait can be huge.</li>
+        <li>Each cast's luck is decided when you cast, so refreshing won't get you a better fish.</li>
+      </ul>
+      <p class="note">FISH ALERT (computer only): in Chrome or Edge it opens a tiny window that floats on top of your other apps and flashes when something bites. In other browsers it sends a silent pop-up notification instead. It only works on the game's own website, not inside Claude.</p>
+      <p class="note">Press Space to cast or reel in on a keyboard.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* LOGIC:START */
+var SPECIES=[
+ {id:'bluegill',name:'Bluegill',min:0.2,max:2,k:11,rate:6,minWait:0,maxWait:120,spots:{shallows:5,weedline:2,deep:0},baits:{worm:4,minnow:0.15}},
+ {id:'perch',name:'Yellow perch',min:0.3,max:2.5,k:12,rate:6,minWait:0,maxWait:240,spots:{shallows:4,weedline:4,deep:1},baits:{worm:4,minnow:0.4,cut:0.3}},
+ {id:'crappie',name:'Black crappie',min:0.5,max:4,k:12.5,rate:6,minWait:1,maxWait:480,spots:{shallows:2,weedline:4,deep:1},baits:{worm:2.5,minnow:1}},
+ {id:'largemouth',name:'Largemouth bass',min:1,max:16,k:11.6,rate:10,minWait:15,maxWait:900,spots:{shallows:2,weedline:5,deep:2},baits:{minnow:4,cut:0.5,sucker:0.5}},
+ {id:'smallmouth',name:'Smallmouth bass',min:1,max:9,k:12,rate:11,minWait:20,maxWait:1200,spots:{shallows:0.5,weedline:2,deep:4},baits:{minnow:3,cut:0.5,sucker:0.3}},
+ {id:'walleye',name:'Walleye',min:2,max:18,k:14,rate:12,minWait:30,maxWait:1500,spots:{shallows:0.5,weedline:2,deep:5},baits:{minnow:5,cut:1,sucker:0.5}},
+ {id:'channel',name:'Channel catfish',min:2,max:40,k:14.4,rate:5,minWait:30,maxWait:0,spots:{shallows:1,weedline:2,deep:4},baits:{minnow:0.5,cut:6,sucker:1}},
+ {id:'pike',name:'Northern pike',min:3,max:35,k:15.8,rate:6,minWait:60,maxWait:0,spots:{shallows:0.5,weedline:5,deep:2},baits:{minnow:4,cut:0.5,sucker:3}},
+ {id:'laketrout',name:'Lake trout',min:4,max:45,k:14.4,rate:8,minWait:120,maxWait:0,spots:{shallows:0,weedline:0.5,deep:6},baits:{minnow:2,cut:3,sucker:2}},
+ {id:'muskie',name:'Muskellunge',min:10,max:60,k:16.2,rate:10,minWait:240,maxWait:0,spots:{shallows:0,weedline:3,deep:4},baits:{sucker:6}},
+ {id:'flathead',name:'Flathead catfish',min:15,max:100,k:14.5,rate:5,minWait:360,maxWait:0,spots:{shallows:0,weedline:1,deep:5},baits:{cut:2,sucker:4}},
+ {id:'sturgeon',name:'Lake sturgeon',min:30,max:150,k:16.3,rate:8,minWait:720,maxWait:0,spots:{shallows:0,weedline:0,deep:5},baits:{cut:1.5,sucker:3}}
+];
+var SPOTS=[
+ {id:'shallows',name:'Shallows',short:'SHALLOWS',desc:'Panfish and the odd bass',unlockH:0},
+ {id:'weedline',name:'Weedline',short:'WEEDLINE',desc:'Bass, pike and muskie',unlockH:1},
+ {id:'deep',name:'Deep Hole',short:'DEEP HOLE',desc:'Trout, cats and giants',unlockH:8}
+];
+var BAITS=[
+ {id:'worm',name:'Worms',price:0,tau:10,capMax:0.35,minBite:0.15,biteMean:1,rate:'HIGH',desc:'Lots of bites, tiny fish',catches:'Bluegill, perch, crappie',timing:'Bites come fast, about once a minute. Only tiny fish though.'},
+ {id:'minnow',name:'Minnows',price:60,tau:150,capMax:1,minBite:8,biteMean:15,rate:'OK',desc:'Bass, walleye, pike',catches:'Bass, walleye, pike, crappie',timing:'A bite every 20 minutes or so. Later bites bring bigger fish.'},
+ {id:'cut',name:'Cut bait',price:400,tau:360,capMax:1,minBite:5,biteMean:120,rate:'LOW',desc:'Catfish and lake trout',catches:'Catfish, lake trout, flatheads',timing:'A bite every 2 hours or so. Later bites bring bigger fish.'},
+ {id:'sucker',name:'Suckers',price:1500,tau:720,capMax:1,minBite:10,biteMean:360,rate:'VERY LOW',desc:'Rare bites, giant fish',catches:'Muskie, pike, flatheads, sturgeon',timing:'A bite every 6 hours or so, if you are lucky. Giants only bite late.'}
+];
+var BAIT_BY_ID={}; BAITS.forEach(function(b){BAIT_BY_ID[b.id]=b;});
+
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    var t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function speciesWeights(spot,bait,minutes){
+  return SPECIES.map(function(sp){
+    var w=(sp.spots[spot]||0)*(sp.baits[bait]||0);
+    if(minutes<sp.minWait) w=0;
+    else if(sp.maxWait && minutes>sp.maxWait) w*=Math.exp(-(minutes-sp.maxWait)/sp.maxWait);
+    return {sp:sp,w:w};
+  });
+}
+function sizeCap(minutes,bait){ var b=BAIT_BY_ID[bait]; return (0.12+0.88*(1-Math.exp(-minutes/b.tau)))*b.capMax; }
+function rollCatch(seed,spot,bait,minutes){
+  var rnd=mulberry32(seed>>>0);
+  var list=speciesWeights(spot,bait,minutes);
+  var total=0; list.forEach(function(x){total+=x.w;});
+  if(total<=0) return null;
+  var pick=rnd()*total, chosen=null;
+  for(var i=0;i<list.length;i++){
+    var x=list[i]; if(x.w<=0) continue;
+    chosen=x; pick-=x.w; if(pick<=0) break;
+  }
+  var sp=chosen.sp;
+  var A=1-Math.exp(-minutes/BAIT_BY_ID[bait].tau);
+  var cap=(0.12+0.88*A)*BAIT_BY_ID[bait].capMax;
+  var u=rnd(), bonus=rnd()<0.03+0.12*A, v=rnd();
+  var f=bonus ? cap*(0.75+0.25*v) : cap*Math.pow(u,1.25);
+  var lb=Math.round((sp.min+(sp.max-sp.min)*f)*16)/16;
+  var inches=Math.round(sp.k*Math.cbrt(lb)*4)/4;
+  return {id:sp.id,lb:lb,inches:inches,bonus:bonus};
+}
+function fishValue(id,lb){ var sp=SPECIES.filter(function(s){return s.id===id;})[0]; return Math.max(1,Math.round(lb*sp.rate)); }
+/* When the first fish bites, in fishing minutes. Random per cast, decided by the cast's seed. */
+function biteMinutes(seed,spot,bait){
+  var b=BAIT_BY_ID[bait], r=mulberry32((seed^0x51ED27)>>>0)();
+  var first=Infinity;
+  SPECIES.forEach(function(sp){ if((sp.spots[spot]||0)*(sp.baits[bait]||0)>0) first=Math.min(first,sp.minWait); });
+  if(first===Infinity) return Infinity;
+  return Math.max(b.minBite,first)-Math.log(1-r)*b.biteMean;
+}
+function nudgeCount(seed,minutes,bait){
+  var r=mulberry32((seed^0x9E3779B9)>>>0)();
+  var every=Math.max(0.25,Math.min(8,BAIT_BY_ID[bait].tau/20));
+  return Math.floor(minutes/(every*(0.75+0.5*r)));
+}
+function fmtDuration(min){
+  if(min<1) return Math.max(0,Math.round(min*60))+'s';
+  if(min<60) return Math.floor(min)+'m';
+  if(min<1440){ var h=Math.floor(min/60), m=Math.floor(min%60); return m? h+'h '+m+'m' : h+'h'; }
+  var d=Math.floor(min/1440), hh=Math.floor((min%1440)/60); return hh? d+'d '+hh+'h' : d+'d';
+}
+function fmtClock(sec){
+  sec=Math.max(0,Math.floor(sec));
+  var d=Math.floor(sec/86400), h=Math.floor(sec%86400/3600), m=Math.floor(sec%3600/60), s=sec%60;
+  var p=function(n){return String(n).padStart(2,'0');};
+  return (d? d+'d ':'')+p(h)+':'+p(m)+':'+p(s);
+}
+function fmtWeightText(lb){
+  var oz=Math.round(lb*16), p=Math.floor(oz/16), o=oz%16;
+  if(p===0) return o+' oz';
+  if(o===0) return p+' lb';
+  return p+' lb '+o+' oz';
+}
+/* LOGIC:END */
+
+var SP_BY_ID={}, SPOT_BY_ID={};
+SPECIES.forEach(function(s){SP_BY_ID[s.id]=s;});
+SPOTS.forEach(function(s){SPOT_BY_ID[s.id]=s;});
+
+/* ---- clothes catalog ---- */
+var ITEMS=[
+ {id:'hat_red',slot:'hat',name:'Red beanie',price:0,hat:'beanie',c:{R:'#D93A3A',C:'#F0E6D2',W:'#F4F4F4'}},
+ {id:'hat_blue',slot:'hat',name:'Blue beanie',price:30,hat:'beanie',c:{R:'#2F6FD0',C:'#E8EEF6',W:'#F4F4F4'}},
+ {id:'hat_pink',slot:'hat',name:'Pink beanie',price:30,hat:'beanie',c:{R:'#E25A9A',C:'#FBE3EF',W:'#FFFFFF'}},
+ {id:'hat_cap',slot:'hat',name:'Ball cap',price:80,hat:'cap',c:{R:'#1F8A5A',r:'#145C3C'}},
+ {id:'hat_trapper',slot:'hat',name:'Trapper hat',price:250,hat:'trapper',c:{R:'#7A4E2A',C:'#EADFC8'}},
+ {id:'hat_top',slot:'hat',name:'Top hat',price:1200,hat:'top',c:{T:'#1A1A22',R:'#B0303A'}},
+ {id:'hat_crown',slot:'hat',name:'Gold crown',price:5000,hat:'crown',c:{Y:'#FFC94A',y:'#C98A12',J:'#E5484D',U:'#3FA7F0'}},
+ {id:'coat_orange',slot:'coat',name:'Hunter orange',price:0,c:{O:'#F07A2A',o:'#B5531A'}},
+ {id:'coat_red',slot:'coat',name:'Red parka',price:40,c:{O:'#D93A3A',o:'#962424'}},
+ {id:'coat_blue',slot:'coat',name:'Blue parka',price:40,c:{O:'#3A78D8',o:'#24509A'}},
+ {id:'coat_green',slot:'coat',name:'Green parka',price:40,c:{O:'#3E9A50',o:'#266A34'}},
+ {id:'coat_black',slot:'coat',name:'Black parka',price:60,c:{O:'#2E3240',o:'#17191F'}},
+ {id:'coat_camo',slot:'coat',name:'Camo jacket',price:300,c:{O:{cam:['#5E7040','#3E4A2A','#8A8458']},o:{cam:['#3E4A2A','#2A3220']}}},
+ {id:'coat_gold',slot:'coat',name:'Gold jacket',price:2500,c:{O:'#FFC94A',o:'#C98A12'}},
+ {id:'pants_navy',slot:'pants',name:'Snow pants',price:0,c:{P:'#2B3550'}},
+ {id:'pants_black',slot:'pants',name:'Black pants',price:25,c:{P:'#1A1C22'}},
+ {id:'pants_jeans',slot:'pants',name:'Jeans',price:25,c:{P:'#3D5F9A'}},
+ {id:'pants_tan',slot:'pants',name:'Tan bibs',price:40,c:{P:'#B08A58'}},
+ {id:'pants_plaid',slot:'pants',name:'Plaid pants',price:150,c:{P:{chk:['#C0392B','#1E1E24']}}},
+ {id:'boots_black',slot:'boots',name:'Black boots',price:0,c:{K:'#1B1F2A'}},
+ {id:'boots_brown',slot:'boots',name:'Brown boots',price:20,c:{K:'#6A4426'}},
+ {id:'boots_red',slot:'boots',name:'Red boots',price:40,c:{K:'#C0392B'}},
+ {id:'boots_gold',slot:'boots',name:'Gold boots',price:800,c:{K:'#FFC94A'}},
+ {id:'skin_1',slot:'skin',name:'Tone 1',price:0,c:{S:'#F2C49B'}},
+ {id:'skin_2',slot:'skin',name:'Tone 2',price:0,c:{S:'#D9A273'}},
+ {id:'skin_3',slot:'skin',name:'Tone 3',price:0,c:{S:'#A86E45'}},
+ {id:'skin_4',slot:'skin',name:'Tone 4',price:0,c:{S:'#6E4528'}}
+];
+var ITEM_BY_ID={}; ITEMS.forEach(function(i){ITEM_BY_ID[i.id]=i;});
+var SLOTS=[{id:'hat',name:'HATS'},{id:'coat',name:'COATS'},{id:'pants',name:'PANTS'},{id:'boots',name:'BOOTS'},{id:'skin',name:'SKIN'}];
+var DEFAULT_OUTFIT={hat:'hat_red',coat:'coat_orange',pants:'pants_navy',boots:'boots_black',skin:'skin_1'};
+
+var SAVE_KEY='slowbite.v1', PRACTICE_SPEED=600;
+var storageOK=true, state=null, armedUntil=0, toastTimer=0;
+function $(id){return document.getElementById(id);}
+function freshState(){ return {v:1,spot:'shallows',bait:'worm',practice:false,line:null,fishedSec:0,total:0,records:{},catches:[],last:null,
+  coins:0,earned:0,ownedBaits:['worm'],bucket:[],uid:0,outfit:Object.assign({},DEFAULT_OUTFIT),ownedItems:ITEMS.filter(function(i){return i.price===0;}).map(function(i){return i.id;})}; }
+function upgrade(d){
+  var s=Object.assign(freshState(),d);
+  if(!Array.isArray(s.ownedBaits)||s.ownedBaits.indexOf('worm')<0) s.ownedBaits=['worm'];
+  if(!Array.isArray(s.bucket)) s.bucket=[];
+  s.outfit=Object.assign({},DEFAULT_OUTFIT,s.outfit||{});
+  var free=ITEMS.filter(function(i){return i.price===0;}).map(function(i){return i.id;});
+  s.ownedItems=Array.from(new Set((s.ownedItems||[]).concat(free)));
+  return s;
+}
+function load(){
+  try{ var raw=localStorage.getItem(SAVE_KEY); if(raw){ var d=JSON.parse(raw); if(d&&d.v===1) return upgrade(d); } }
+  catch(e){ storageOK=false; }
+  return null;
+}
+function save(){
+  try{ localStorage.setItem(SAVE_KEY,JSON.stringify(state)); }
+  catch(e){ if(storageOK){ storageOK=false; toast('Saving is blocked in this browser. Keep the page open or your progress will be lost.',6000); } }
+}
+function effMinutes(line,now){ return Math.max(0,(now-line.castAt)/1000)*line.speed/60; }
+function overallBest(){
+  var best=null;
+  Object.keys(state.records).forEach(function(id){ var r=state.records[id]; if(!best||r.lb>best.lb) best=Object.assign({id:id},r); });
+  return best;
+}
+function owns(b){ return state.ownedBaits.indexOf(b)>=0; }
+function fixSelection(){
+  var sp=SPOT_BY_ID[state.spot];
+  if(!sp||(!state.practice && state.fishedSec/3600<sp.unlockH)) state.spot='shallows';
+  if(!BAIT_BY_ID[state.bait]||!owns(state.bait)) state.bait='worm';
+}
+function toast(msg,ms,good){
+  var t=$('toast'); t.textContent=msg; t.className='toast'+(good?' good':''); t.hidden=false;
+  clearTimeout(toastTimer); toastTimer=setTimeout(function(){t.hidden=true;},ms||2600);
+}
+function hash(n){var x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);}
+function money(n){ return Number(n).toLocaleString('en-US'); }
+function bumpCoins(){ var c=$('coinChip'); c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump'); }
+
+/* ================= PIXEL SPRITES ================= */
+var LOOK={
+ bluegill:{b:'#3E7F86',d:'#24525A',bel:'#F0A23A',fin:'#2E6168',spot:'#1B2E3A',pat:'bars',ht:.6,ear:1},
+ perch:{b:'#C9B23A',d:'#8C7A1E',bel:'#F1E7B5',fin:'#E07A2A',spot:'#3E5A2A',pat:'bars',ht:.36},
+ crappie:{b:'#A9B8A0',d:'#6E7F68',bel:'#E4EADF',fin:'#8B9C84',spot:'#2E3B2E',pat:'spots',ht:.55},
+ largemouth:{b:'#5E7F3A',d:'#3D5626',bel:'#E9E2B8',fin:'#4F6B30',spot:'#24331A',pat:'stripe',ht:.4},
+ smallmouth:{b:'#9A7440',d:'#6A4E28',bel:'#E6D9B0',fin:'#8A6838',spot:'#4E3818',pat:'bars',ht:.38},
+ walleye:{b:'#B59A4A',d:'#7E6A2E',bel:'#F2EBD0',fin:'#9C8440',spot:'#5E4E22',pat:'mottle',ht:.28,bigEye:1},
+ channel:{b:'#7C8A99',d:'#55606C',bel:'#E8ECEF',fin:'#66727F',spot:'#2E3640',pat:'spots',ht:.28,whisk:1},
+ pike:{b:'#4E6A3A',d:'#344A26',bel:'#E8EDC8',fin:'#6E7A30',spot:'#D9E3A8',pat:'lightspots',ht:.2},
+ laketrout:{b:'#4A5E66',d:'#33434A',bel:'#F0E8DA',fin:'#C8703A',spot:'#D8E0E0',pat:'lightspots',ht:.27},
+ muskie:{b:'#A4A06A',d:'#76734A',bel:'#EEEBD2',fin:'#8C5A30',spot:'#5B5A30',pat:'bars',ht:.2},
+ flathead:{b:'#8A7240',d:'#5E4E2A',bel:'#E8DDB8',fin:'#6E5A30',spot:'#4A3A1E',pat:'mottle',ht:.27,whisk:1},
+ sturgeon:{b:'#6B6E62',d:'#4A4C44',bel:'#CFCFC0',fin:'#5A5C52',spot:'#C9CBB8',pat:'scutes',ht:.19,snout:1,whisk:1}
+};
+var spriteCache={};
+function fishGrid(id,L){
+  var lk=LOOK[id];
+  var Hh=Math.max(3,Math.round(L*lk.ht)); if(Hh%2===0) Hh++;
+  var pad=Math.max(2,Math.round(Hh*0.4));
+  var GW=L+2, GH=Hh+pad*2+2, cy=Math.floor(GH/2), half=(Hh-1)/2;
+  var g=[]; for(var y=0;y<GH;y++) g.push(new Array(GW).fill(null));
+  function set(x,y,c){ if(x>=0&&x<GW&&y>=0&&y<GH) g[y][x]=c; }
+  var tailLen=Math.max(2,Math.round(L*0.2)), x0=1, bodyStart=x0+tailLen-1, nose=GW-2;
+  for(var x=x0;x<=nose;x++){
+    if(x<x0+tailLen){
+      var tt=(x0+tailLen-x)/tailLen;
+      var th=Math.round(1+tt*(half*1.05+pad*0.45));
+      for(var dy=-th;dy<=th;dy++){
+        if(tt>0.55 && Math.abs(dy)<th*0.45 && th>2) continue;
+        set(x,cy+dy,'fin');
+      }
+    }
+    if(x>=bodyStart){
+      var u=(x-bodyStart)/Math.max(1,nose-bodyStart);
+      var prof=Math.pow(Math.sin(Math.PI*(0.06+u*0.9)),lk.snout?0.85:0.55);
+      if(u>0.8) prof*=1-(u-0.8)*(lk.snout?2.4:1.4);
+      if(u<0.12) prof=Math.max(prof,0.38);
+      var hh=Math.max(0.6,half*prof);
+      var top=Math.round(cy-hh), bot=Math.round(cy+hh*0.95);
+      for(var y2=top;y2<=bot;y2++){
+        var rel=(y2-top)/Math.max(1,bot-top);
+        var c=rel<0.22?'d':rel>0.62?'bel':'b';
+        if(c!=='bel' && u>0.08 && u<0.86){
+          var h2=hash(x*31.7+y2*17.3+L);
+          if(lk.pat==='bars'){ var p=Math.max(3,Math.round(L/7)); if(((x-bodyStart)%p)<Math.max(1,Math.round(p*0.4))) c='spot'; }
+          else if(lk.pat==='stripe'){ if(Math.abs(y2-cy+1)<=Math.max(0,Math.round(half*0.18)) && hash(x*3.3)>0.2) c='spot'; }
+          else if(lk.pat==='spots'){ if(h2<0.16) c='spot'; }
+          else if(lk.pat==='lightspots'){ if(h2<0.2) c='spot'; }
+          else if(lk.pat==='mottle'){ if(h2<0.3) c='d'; else if(h2>0.9) c='spot'; }
+          else if(lk.pat==='scutes'){ if((y2===top+1 && x%3===0)||(y2===cy && x%4===0)) c='spot'; }
+        }
+        if(Math.abs(u-0.72)<0.5/Math.max(1,nose-bodyStart) && rel>0.15 && rel<0.85 && L>14) c='d';
+        set(x,y2,c);
+      }
+      if(u>0.3&&u<0.62){ var fh=Math.round(pad*0.85*Math.sin(Math.PI*(u-0.3)/0.32)); for(var k=1;k<=fh;k++) set(x,top-k,'fin'); }
+      if(u>0.22&&u<0.36 && L>10) set(x,bot+1,'fin');
+      if(u>0.6&&u<0.68 && L>14) set(x,bot+1,'fin');
+    }
+  }
+  var out=[]; for(y=0;y<GH;y++){ for(x=0;x<GW;x++){ if(g[y][x]) continue;
+    if((x>0&&g[y][x-1])||(x<GW-1&&g[y][x+1])||(y>0&&g[y-1][x])||(y<GH-1&&g[y+1][x])) out.push([x,y]); } }
+  out.forEach(function(p){ g[p[1]][p[0]]='out'; });
+  var span=nose-bodyStart, ex=bodyStart+Math.round(span*0.86), ey=cy-Math.max(1,Math.round(half*0.32));
+  if(lk.ear && L>9) set(ex-Math.max(2,Math.round(span*0.12)),cy-1,'spot');
+  set(ex,ey,'eye');
+  if(lk.bigEye && L>16){ set(ex-1,ey,'eye'); set(ex,ey-1,'hl'); }
+  else if(L>20) set(ex,ey-1,'hl');
+  set(nose,cy+1,'out');
+  if(lk.whisk){ set(nose,cy+2,'out'); set(nose-1,cy+3,'out'); if(L>16){ set(nose-2,cy+4,'out'); set(nose+1,cy+2,'out'); } }
+  return g;
+}
+function fishCanvas(id,L,shadow){
+  var key=id+'|'+L+'|'+(shadow||0);
+  if(spriteCache[key]) return spriteCache[key];
+  var g=fishGrid(id,L), lk=LOOK[id];
+  var pal={b:lk.b,d:lk.d,bel:lk.bel,fin:lk.fin,spot:lk.spot,out:'#0B1420',eye:'#0B0F14',hl:'#F4F4E8'};
+  var c=document.createElement('canvas'); c.width=g[0].length; c.height=g.length;
+  var x2=c.getContext('2d');
+  for(var y=0;y<g.length;y++) for(var x=0;x<g[0].length;x++){
+    var k=g[y][x]; if(!k) continue;
+    x2.fillStyle=shadow?(typeof shadow==='string'?shadow:'#020A16'):pal[k]; x2.fillRect(x,y,1,1);
+  }
+  spriteCache[key]=c; return c;
+}
+function fishImg(id,L,shadow,scale){
+  var src=fishCanvas(id,L,shadow), c=document.createElement('canvas');
+  c.width=src.width; c.height=src.height; c.className='px'; c.getContext('2d').drawImage(src,0,0);
+  c.style.width=(src.width*scale)+'px'; c.style.height=(src.height*scale)+'px';
+  c.setAttribute('role','img'); c.setAttribute('aria-label',shadow?'Uncaught fish silhouette':SP_BY_ID[id].name);
+  return c;
+}
+function pix(v,x,y){ if(typeof v==='string') return v; if(v.chk) return v.chk[(x+y)&1]; return v.cam[Math.floor(hash(x*7.13+y*3.31)*v.cam.length)]; }
+function drawSprite(ctx,rows,map,ox,oy){
+  for(var y=0;y<rows.length;y++) for(var x=0;x<rows[y].length;x++){
+    var ch=rows[y][x]; if(ch==='.'||!map[ch]) continue; ctx.fillStyle=pix(map[ch],x,y); ctx.fillRect(ox+x,oy+y,1,1);
+  }
+}
+function spriteCanvas(rows,map,cls){
+  var c=document.createElement('canvas'); c.width=rows[0].length; c.height=rows.length; c.className='px'+(cls?' '+cls:'');
+  drawSprite(c.getContext('2d'),rows,map,0,0); return c;
+}
+var BAIT_ART={
+  worm:{rows:["........","......p.",".....pP.","..pp.p..",".pPPp...","pP..Pp..",".....Pp.","......p."],map:{p:'#C2506A',P:'#F08AA0'}},
+  minnow:{rows:["........","........","s...sss.","ssssSSse","s.ssSSs.","...sss..","........","........"],map:{s:'#8FA3B0',S:'#E2ECF0',e:'#10161C'}},
+  cut:{rows:["........","...rr...","..rRRr..",".rRRRRr.",".rRRRRw.","..rRRww.","...rrw..","........"],map:{r:'#8E2430',R:'#D9465A',w:'#F2D9D2'}},
+  sucker:{rows:["........","........","t.oooo..","ttOOOOoo","t.OOOOOe","..oooo..","........","........"],map:{t:'#6E6A3A',o:'#6E6A3A',O:'#C4B878',e:'#10161C'}}
+};
+var ICONS={
+  trophy:{rows:["Y.YYYY.Y","Y.YYYY.Y",".YYYYYY.","..YYYY..","...YY...","...YY...","..yyyy..",".yyyyyy."],map:{Y:'#FFC94A',y:'#C98A12'}},
+  pail:{rows:["..kkkk..",".k....k.","gggggggg",".gGgggg.",".gGgggg.",".gGgggg.","..gggg..","........"],map:{k:'#5A6476',g:'#8C97A8',G:'#D8E0EA'}},
+  hat:{rows:["........","...WW...","..RRRR..",".RRRRRR.",".RRRRRR.",".CCCCCC.","........","........"],map:{W:'#F4F4F4',R:'#D93A3A',C:'#F0E6D2'}},
+  tackle:{rows:["..kkkk..","..k..k..","GGGGGGGG","GgYggYgG","GGGGGGGG","GggggggG","GggggggG","GGGGGGGG"],map:{G:'#2F7C9A',g:'#1D5468',Y:'#FFC94A',k:'#5A6476'}},
+  medal:{rows:["..rbbr..","...rb...","..YYYY..",".YyYYyY.",".YYYYYY.",".YyYYyY.","..YYYY..","........"],map:{r:'#E5484D',b:'#3FA7F0',Y:'#FFC94A',y:'#C98A12'}},
+  help:{rows:["..WWWW..",".WW..WW.",".....WW.","....WW..","...WW...","...WW...","........","...WW..."],map:{W:'#EAF5FF'}}
+};
+var HAT_ROWS={
+  beanie:[".....W......","....RRRR....","...RRRRRR...","...CCCCCC..."],
+  cap:["............","....RRRR....","...RRRRRR...","...RRRRRRrr."],
+  trapper:["....RRRR....","...RRRRRR...","..RRRRRRRR..","..CCCCCCCC.."],
+  top:["...TTTTT....","...TTTTT....","...RRRRR....","..TTTTTTT..."],
+  crown:["............","...Y.Y.Y.Y..","...YYYYYYY..","...yJyUyJy.."]
+};
+var BODY=[
+ "...SSSSSE...",
+ "...SSSSSS...",
+ "....SSSS....",
+ "..OOOOOOO...",
+ ".OOOOOOOOO..",
+ ".OOOOOOOOOGG",
+ ".oOOOOOOO...",
+ ".oOOOOOOO...",
+ "..PPPPPPP...",
+ "..PPPPPPPPP.",
+ "..BBBB..PPP.",
+ "..bBBB..PPP.",
+ "..bBBB..KKK.",
+ "..bBBB..KKKK"
+];
+function setCh(s,i,c){ return s.slice(0,i)+c+s.slice(i+1); }
+function fisherSprite(of){
+  var hat=ITEM_BY_ID[of.hat]||ITEM_BY_ID.hat_red;
+  var rows=HAT_ROWS[hat.hat].concat(BODY);
+  if(hat.hat==='trapper'){ for(var y=4;y<=6;y++) rows[y]=setCh(rows[y],2,'C'); rows[4]=setCh(rows[4],9,'C'); rows[5]=setCh(rows[5],9,'C'); }
+  var m={E:'#1B1B24',G:'#2B2F3A',B:'#9AA6B6',b:'#6E7A8C'};
+  ['skin','coat','pants','boots','hat'].forEach(function(s){ var it=ITEM_BY_ID[of[s]]||ITEM_BY_ID[DEFAULT_OUTFIT[s]]; Object.assign(m,it.c); });
+  return {rows:rows,map:m};
+}
+var fisherCache={};
+function fisherCanvas(of){
+  var key=[of.hat,of.coat,of.pants,of.boots,of.skin].join('|');
+  if(!fisherCache[key]){ var s=fisherSprite(of); fisherCache[key]=spriteCanvas(s.rows,s.map); }
+  return fisherCache[key];
+}
+
+/* ================= UI RENDER ================= */
+function renderHUD(){
+  var best=overallBest();
+  $('bestTxt').textContent=best?fmtWeightText(best.lb).toUpperCase():'NONE YET';
+  $('bestChip').title=best?SP_BY_ID[best.id].name:'';
+  $('coinTxt').textContent=money(state.coins);
+  document.querySelectorAll('[data-coins]').forEach(function(e){ e.textContent=money(state.coins); });
+  $('menuCoins').textContent=money(state.coins);
+  var n=state.bucket.length; $('menuBadge').hidden=!n; $('menuBadge').textContent=n>99?'99+':n;
+}
+function busyLine(){ return !!state.line||!!(fx&&!fx.out); }
+function renderTackle(){
+  var hours=state.fishedSec/3600, busy=busyLine();
+  $('tackleNote').hidden=!busy;
+  $('spots').innerHTML=SPOTS.map(function(s){
+    var locked=!state.practice && hours<s.unlockH;
+    var sub=locked?'LOCKED '+fmtDuration((s.unlockH*3600-state.fishedSec)/60).toUpperCase():'OPEN';
+    return '<button type="button" data-spot="'+s.id+'" aria-pressed="'+(state.spot===s.id)+'"'+(locked?' disabled':'')+'>'+s.short+'<span class="s">'+sub+'</span></button>';
+  }).join('');
+  $('spotDesc').textContent=SPOT_BY_ID[state.spot].desc;
+  var b=$('baits'); b.innerHTML='';
+  BAITS.forEach(function(bt){
+    var own=owns(bt.id), el=document.createElement('button'); el.type='button'; el.className='bait'+(own?'':' locked'); el.dataset.bait=bt.id;
+    el.setAttribute('aria-pressed',String(state.bait===bt.id));
+    el.setAttribute('aria-label',own?bt.name:bt.name+', locked, costs '+bt.price+' coins');
+    el.appendChild(spriteCanvas(BAIT_ART[bt.id].rows,BAIT_ART[bt.id].map));
+    var sp=document.createElement('span'); sp.textContent=own?bt.name:'$'+money(bt.price); el.appendChild(sp);
+    b.appendChild(el);
+  });
+  $('baitDesc').textContent=BAIT_BY_ID[state.bait].desc;
+  $('practice').checked=state.practice; $('practice').disabled=busy;
+}
+function renderLoadout(){
+  var lo=$('loadout'); lo.innerHTML='';
+  lo.appendChild(spriteCanvas(BAIT_ART[state.bait].rows,BAIT_ART[state.bait].map));
+  var t=document.createElement('span'); t.className='lo-t'; t.textContent=SPOT_BY_ID[state.spot].short+' / '+BAIT_BY_ID[state.bait].name.toUpperCase()+(state.practice?' / FAST':''); lo.appendChild(t);
+  var c=document.createElement('span'); c.className='lo-c'; c.textContent='CHANGE'; lo.appendChild(c);
+}
+function renderPanel(){
+  var card=!!(fx&&fx.card&&!fx.out), busy=!!(fx&&!fx.out);
+  $('catchUI').hidden=!card;
+  $('go').hidden=card;
+  $('sonar').hidden=!state.line||busy;
+  $('loadout').hidden=!!state.line||busy;
+}
+function renderSonar(){
+  var line=state.line; if(!line) return;
+  var T=effMinutes(line,Date.now()), info=lineInfo(line), on=T>=info.bite, bt=BAIT_BY_ID[line.bait];
+  $('sonarWhere').textContent=(SPOT_BY_ID[line.spot].short+' / '+bt.name.toUpperCase())+(line.speed>1?' / FAST':'');
+  var cap=Math.round(sizeCap(Math.min(T,info.bite),line.bait)*100);
+  $('meterBar').style.setProperty('--w',cap+'%'); $('meterPct').textContent=cap+'%';
+  if(on){
+    $('sonarList').innerHTML='<li class="s-msg" style="color:var(--gold)">!! FISH ON THE LINE !!</li><li class="s-msg">HOOKED AFTER '+fmtDuration(info.bite).toUpperCase()+'</li>';
+    $('sonarNext').innerHTML=feel(info.roll.lb)+' REEL IT IN!';
+    return;
+  }
+  var list=speciesWeights(line.spot,line.bait,T), total=0;
+  list.forEach(function(x){total+=x.w;});
+  var live=list.filter(function(x){return x.w>0;}).sort(function(a,b){return b.w-a.w;}).slice(0,4);
+  $('sonarList').innerHTML='<li class="s-msg">BITE RATE: <b style="font-weight:400;color:var(--gold)">'+bt.rate+'</b></li>'+(live.length?live.map(function(x){
+    var pct=total?x.w/total*100:0;
+    return '<li class="s-row"><span class="nm">'+x.sp.name.toUpperCase()+'</span><span class="track"><span class="blocks" style="--w:'+Math.max(4,pct).toFixed(0)+'%"></span></span><span class="p">'+(pct<1?'&lt;1':Math.round(pct))+'%</span></li>';
+  }).join(''):'<li class="s-msg">NO FISH NEARBY YET...</li>');
+  var next=null;
+  SPECIES.forEach(function(sp){ if((sp.spots[line.spot]||0)*(sp.baits[line.bait]||0)>0 && sp.minWait>T && (!next||sp.minWait<next.minWait)) next=sp; });
+  $('sonarNext').innerHTML=next?'NEXT ARRIVAL: <b>'+next.name.toUpperCase()+'</b> IN '+fmtDuration(next.minWait-T).toUpperCase():'WAITING FOR A BITE. <b>LATER BITES = BIGGER FISH.</b>';
+}
+var infoCache={}, wasOn=false;
+function lineInfo(line){
+  var k=line.seed+'|'+line.spot+'|'+line.bait;
+  if(!infoCache[k]){ var bt=biteMinutes(line.seed,line.spot,line.bait); infoCache[k]={bite:bt,roll:isFinite(bt)?rollCatch(line.seed,line.spot,line.bait,bt):null}; }
+  return infoCache[k];
+}
+function hooked(line,now){ return effMinutes(line,now||Date.now())>=lineInfo(line).bite; }
+function feel(lb){ return lb<1?'FEELS <b>TINY</b>.':lb<5?'A <b>DECENT TUG</b>.':lb<20?'IT IS <b>FIGHTING HARD</b>!':'IT IS <b>MASSIVE</b>!'; }
+var lastSonar=0;
+function tick(){
+  checkBiteAlert();
+  var now=Date.now(), line=state.line, center=$('center'), clock=$('clock'), st=$('status'), go=$('go');
+  if(fx&&!fx.out){
+    center.style.visibility='hidden';
+    go.disabled=true; go.className='go reel'; go.textContent='REELING...';
+    return;
+  }
+  center.style.visibility='';
+  if(!line||!hooked(line,now)){ if(wasOn){ wasOn=false; try{ document.title='Below Zero'; }catch(e){} } }
+  if(line){
+    var eff=Math.max(0,(now-line.castAt)/1000)*line.speed, T=eff/60;
+    clock.className='clock'; clock.textContent=fmtClock(eff);
+    var on=T>=lineInfo(line).bite;
+    go.disabled=false;
+    if(on){
+      clock.className='clock ready'; clock.textContent='FISH ON!';
+      st.textContent='Something bit! Reel it in.';
+      go.className='go reel arm'; go.textContent='REEL IT IN!';
+      if(!wasOn){ wasOn=true; lastSonar=0; try{ document.title='FISH ON! | Below Zero'; }catch(e){} }
+    }else{
+      st.innerHTML=(line.speed>1?'Fast time is on. ':'')+'<span class="n">Waiting for a bite...</span>'+(line.speed>1||line.bait==='worm'?'':' You can close this page.');
+      var arm=armedUntil>now;
+      go.className='go reel'+(arm?' arm':''); go.textContent=arm?'TAP AGAIN!':'REEL IN';
+    }
+    if(now-lastSonar>=1000){ lastSonar=now; renderSonar(); }
+  }else{
+    clock.className='clock ready'; clock.textContent='READY';
+    st.textContent=state.catches.length?'Drop another line. Patience pays.':'Worms get fast bites. Cast to start!';
+    go.disabled=false; go.className='go'; go.textContent='CAST';
+  }
+}
+function renderAll(){
+  fixSelection(); renderHUD(); renderLoadout(); renderTackle(); renderPanel(); renderSonar(); lastSonar=Date.now(); tick();
+  requestAnimationFrame(measure);
+}
+
+/* ================= ACTIONS ================= */
+function cast(){
+  if(state.line) return;
+  if(fx){ if(fx.out) fx=null; else return; }
+  var seed; try{ seed=crypto.getRandomValues(new Uint32Array(1))[0]; }catch(e){ seed=Math.floor(Math.random()*4294967296); }
+  state.line={castAt:Date.now(),seed:seed,spot:state.spot,bait:state.bait,speed:state.practice?PRACTICE_SPEED:1};
+  armedUntil=0; castAnim=performance.now(); parts=[]; debris=[]; cracks=[];
+  save(); renderAll();
+}
+function reelIn(){
+  var line=state.line; if(!line) return;
+  var now=Date.now(), realSec=Math.max(0,(now-line.castAt)/1000), minutes=realSec*line.speed/60;
+  state.line=null; armedUntil=0;
+  var info=lineInfo(line), practice=line.speed>1;
+  if(minutes<info.bite){ if(!practice) state.fishedSec+=realSec; save(); renderAll(); toast('Empty hook. Nothing bit this time.'); return; }
+  var r=info.roll;
+  var entry={sp:r.id,lb:r.lb,inches:r.inches,at:now,spot:line.spot,bait:line.bait,min:Math.round(info.bite*10)/10,practice:practice};
+  var newBest=false,newSpecies=false,unlocked=[];
+  if(!practice){
+    var prev=overallBest(), beforeH=state.fishedSec/3600;
+    state.total+=1; entry.n=state.total; state.fishedSec+=realSec;
+    var rec=state.records[r.id];
+    if(!rec) newSpecies=true;
+    if(!rec||r.lb>rec.lb) state.records[r.id]={lb:r.lb,inches:r.inches,at:now,min:entry.min,spot:line.spot,bait:line.bait};
+    newBest=!prev||r.lb>prev.lb;
+    var afterH=state.fishedSec/3600;
+    SPOTS.forEach(function(s){ if(s.unlockH>0&&beforeH<s.unlockH&&afterH>=s.unlockH) unlocked.push(s.name); });
+    entry.uid=++state.uid;
+    state.bucket.unshift({uid:entry.uid,sp:r.id,lb:r.lb,inches:r.inches,at:now});
+  }
+  state.catches.unshift(entry); if(state.catches.length>60) state.catches.length=60;
+  state.last=Object.assign({newBest:newBest,newSpecies:newSpecies,unlocked:unlocked,seen:false},entry);
+  save();
+  if(!practice) lbConsider();
+  startFx(state.last,reduceMotion);
+  renderAll();
+  if(reduceMotion) showCard(); else setTimeout(showCard,CARD_AT);
+}
+function sellUids(uids){
+  var total=0, keep=[];
+  state.bucket.forEach(function(f){ if(uids.indexOf(f.uid)>=0) total+=fishValue(f.sp,f.lb); else keep.push(f); });
+  if(!total) return 0;
+  state.bucket=keep; state.coins+=total; state.earned+=total; save(); renderHUD(); bumpCoins();
+  return total;
+}
+function showCard(){
+  var L=state.last; if(!fx||fx.card||fx.out||!L) return;
+  fx.card=true;
+  var sp=SP_BY_ID[L.sp], rib=[];
+  if(L.newBest) rib.push('<span class="ribbon">NEW RECORD!</span>');
+  if(L.newSpecies) rib.push('<span class="ribbon g">NEW SPECIES</span>');
+  (L.unlocked||[]).forEach(function(n){ rib.push('<span class="ribbon b">'+n.toUpperCase()+' UNLOCKED</span>'); });
+  if(L.practice) rib.push('<span class="ribbon p">PRACTICE CATCH</span>');
+  $('ribbons').innerHTML=rib.join(''); $('ribbons').hidden=!rib.length;
+  $('catchName').textContent=sp.name.toUpperCase();
+  $('catchWeight').textContent=fmtWeightText(L.lb).toUpperCase();
+  $('catchLen').textContent=L.inches+' inches long';
+  $('catchFacts').innerHTML='<div class="fact"><span class="k">BIT AFTER</span><span class="v">'+fmtDuration(L.min)+'</span></div><div class="fact"><span class="k">SPOT</span><span class="v">'+SPOT_BY_ID[L.spot].name+'</span></div><div class="fact"><span class="k">BAIT</span><span class="v">'+BAIT_BY_ID[L.bait].name+'</span></div>';
+  var inBucket=!L.practice && state.bucket.some(function(f){return f.uid===L.uid;});
+  $('sellNow').hidden=!inBucket;
+  if(inBucket) $('sellNow').textContent='SELL $'+money(fishValue(L.sp,L.lb));
+  $('keep').textContent=inBucket?'KEEP':'KEEP FISHING';
+  $('catchBtns').style.gridTemplateColumns=inBucket?'':'minmax(0,1fr)';
+  renderPanel(); tick(); requestAnimationFrame(measure);
+  try{ (inBucket?$('sellNow'):$('keep')).focus({preventScroll:true}); }catch(e){}
+}
+function endFx(){
+  if(!fx||fx.out) return;
+  if(state.last){ state.last.seen=true; save(); }
+  fx.out=performance.now(); renderAll();
+  try{ $('go').focus({preventScroll:true}); }catch(e){}
+}
+
+/* ---- menu & screens ---- */
+var OVERLAYS=['menuOv','tackleOv','baitOv','shopOv','bucketOv','trophyOv','boardOv','helpOv'];
+function openOv(id){
+  OVERLAYS.forEach(function(o){ $(o).hidden=true; });
+  if(id==='menuOv') renderMenu();
+  if(id==='tackleOv') renderTackle();
+  if(id==='baitOv') renderBaitShop();
+  if(id==='shopOv'){ shopPreview=null; renderShop(); }
+  if(id==='bucketOv') renderBucket();
+  if(id==='trophyOv') renderTrophies();
+  if(id==='boardOv') renderBoard();
+  renderHUD();
+  $(id).hidden=false;
+  var f=$(id).querySelector('[data-close]'); if(f) f.focus();
+}
+function closeAll(){ OVERLAYS.forEach(function(o){ $(o).hidden=true; }); $('resetAsk').hidden=true; $('reset').hidden=false; renderAll(); }
+function anyOpen(){ return !$('nameOv').hidden||OVERLAYS.some(function(o){return !$(o).hidden;}); }
+
+function renderMenu(){
+  var worth=state.bucket.reduce(function(s,f){return s+fishValue(f.sp,f.lb);},0);
+  var ownedClothes=state.ownedItems.filter(function(i){return ITEM_BY_ID[i]&&ITEM_BY_ID[i].price>0;}).length;
+  var entries=[
+    {go:'tackleOv',icon:ICONS.tackle,t:'TACKLE BOX',s:SPOT_BY_ID[state.spot].name+' with '+BAIT_BY_ID[state.bait].name.toLowerCase()},
+    {go:'bucketOv',icon:ICONS.pail,t:'FISH BUCKET',s:state.bucket.length?state.bucket.length+' fish, worth $'+money(worth):'Empty. Go catch something!'},
+    {go:'baitOv',icon:BAIT_ART.minnow,t:'BAIT SHOP',s:state.ownedBaits.length+' of '+BAITS.length+' baits owned'},
+    {go:'shopOv',icon:ICONS.hat,t:'CLOTHES SHOP',s:ownedClothes?ownedClothes+' items bought':'Dress up your angler'},
+    {go:'trophyOv',icon:ICONS.trophy,t:'TROPHY ROOM',s:Object.keys(state.records).length+' of '+SPECIES.length+' species caught'},
+    {go:'boardOv',icon:ICONS.medal,t:'LEADERBOARD',s:state.username?'Playing as '+state.username+'#'+state.tag:'Biggest fish in the world'},
+    {go:'helpOv',icon:ICONS.help,t:'HOW TO PLAY',s:'Bait, coins and big fish'}
+  ];
+  var list=$('menuList'); list.innerHTML='';
+  entries.forEach(function(e){
+    var b=document.createElement('button'); b.type='button'; b.className='mbtn'; b.dataset.go=e.go;
+    b.appendChild(spriteCanvas(e.icon.rows,e.icon.map));
+    var tx=document.createElement('span'); tx.innerHTML='<span class="t">'+e.t+'</span><span class="s">'+e.s+'</span>'; b.appendChild(tx);
+    var ar=document.createElement('span'); ar.className='arrow'; ar.textContent='>'; b.appendChild(ar);
+    list.appendChild(b);
+  });
+}
+function renderBaitShop(){
+  var ul=$('baitList'); ul.innerHTML='';
+  BAITS.forEach(function(bt){
+    var li=document.createElement('li'); li.className='row'+(state.bait===bt.id?' selected':'');
+    var ic=document.createElement('div'); ic.className='ic'; var cv=spriteCanvas(BAIT_ART[bt.id].rows,BAIT_ART[bt.id].map); cv.style.width='48px'; cv.style.height='48px'; ic.appendChild(cv);
+    var info=document.createElement('div');
+    info.innerHTML='<div class="nm">'+bt.name.toUpperCase()+'</div><div class="sub">Catches <b>'+bt.catches+'</b>. '+bt.timing+'</div>';
+    var act=document.createElement('div');
+    if(owns(bt.id)){
+      if(state.bait===bt.id) act.innerHTML='<span class="own">IN USE</span>';
+      else act.innerHTML='<button class="pbtn" type="button" data-use="'+bt.id+'">USE</button>';
+    }else{
+      act.innerHTML='<button class="pbtn gold" type="button" data-buy="'+bt.id+'"'+(state.coins<bt.price?' disabled':'')+'>$'+money(bt.price)+'</button>';
+    }
+    li.appendChild(ic); li.appendChild(info); li.appendChild(act); ul.appendChild(li);
+  });
+}
+function buyBait(id){
+  var bt=BAIT_BY_ID[id]; if(!bt||owns(id)||state.coins<bt.price) return;
+  state.coins-=bt.price; state.ownedBaits.push(id); if(!state.line) state.bait=id;
+  save(); renderBaitShop(); renderAll(); bumpCoins(); toast('Bought '+bt.name+'! Now on your hook.',2600,true);
+}
+
+var shopTab='hat', shopPreview=null;
+function previewOutfit(){ var of=Object.assign({},state.outfit); if(shopPreview) of[ITEM_BY_ID[shopPreview].slot]=shopPreview; return of; }
+function renderShop(){
+  $('shopTabs').innerHTML=SLOTS.map(function(s){ return '<button type="button" data-tab="'+s.id+'" aria-pressed="'+(shopTab===s.id)+'">'+s.name+'</button>'; }).join('');
+  var grid=$('shopItems'); grid.innerHTML='';
+  ITEMS.filter(function(i){return i.slot===shopTab;}).forEach(function(it){
+    var owned=state.ownedItems.indexOf(it.id)>=0, worn=state.outfit[it.slot]===it.id;
+    var sel=shopPreview?shopPreview===it.id:worn;
+    var b=document.createElement('button'); b.type='button'; b.className='item'; b.dataset.item=it.id; b.setAttribute('aria-pressed',String(sel));
+    var of=Object.assign({},state.outfit); of[it.slot]=it.id;
+    b.appendChild(fisherCanvas(of).cloneNode(false)); b.lastChild.getContext('2d').drawImage(fisherCanvas(of),0,0);
+    var n=document.createElement('span'); n.className='in'; n.textContent=it.name; b.appendChild(n);
+    var p=document.createElement('span'); p.className='ip'+(worn?' worn':owned?' own':'');
+    p.textContent=worn?'WEARING':owned?'OWNED':'$'+money(it.price); b.appendChild(p);
+    grid.appendChild(b);
+  });
+  var cv=$('dressCv'), c2=cv.getContext('2d'); c2.clearRect(0,0,12,18); c2.drawImage(fisherCanvas(previewOutfit()),0,0);
+  var it=shopPreview?ITEM_BY_ID[shopPreview]:ITEM_BY_ID[state.outfit[shopTab]];
+  var owned=state.ownedItems.indexOf(it.id)>=0, worn=state.outfit[it.slot]===it.id;
+  $('dressTry').textContent=worn?'WEARING NOW':'TRYING ON';
+  $('dressName').textContent=it.name.toUpperCase();
+  $('dressPrice').textContent=owned?'You own this':'Costs $'+money(it.price);
+  var a=$('shopAction');
+  a.disabled=false; a.className='go';
+  if(worn){ a.textContent='WEARING'; a.disabled=true; a.className='go alt'; }
+  else if(owned){ a.textContent='WEAR IT'; }
+  else if(state.coins>=it.price){ a.textContent='BUY $'+money(it.price); }
+  else { a.textContent='NEED $'+money(it.price-state.coins)+' MORE'; a.disabled=true; }
+  a.dataset.item=it.id;
+}
+function shopAct(){
+  var it=ITEM_BY_ID[$('shopAction').dataset.item]; if(!it) return;
+  var owned=state.ownedItems.indexOf(it.id)>=0;
+  if(!owned){ if(state.coins<it.price) return; state.coins-=it.price; state.ownedItems.push(it.id); bumpCoins(); toast('Bought the '+it.name.toLowerCase()+'!',2200,true); }
+  state.outfit[it.slot]=it.id; shopPreview=null; save(); renderHUD(); renderShop();
+}
+function renderBucket(){
+  var worth=state.bucket.reduce(function(s,f){return s+fishValue(f.sp,f.lb);},0);
+  $('bucketSum').innerHTML=state.bucket.length?state.bucket.length+' fish worth <b>$'+money(worth)+'</b>':'No fish to sell';
+  $('sellAll').disabled=!state.bucket.length;
+  $('sellAll').textContent=state.bucket.length?'SELL ALL $'+money(worth):'SELL ALL';
+  var ul=$('bucketList'); ul.innerHTML='';
+  if(!state.bucket.length){ ul.innerHTML='<li class="empty">Your bucket is empty. Catch some fish and they land here.</li>'; return; }
+  state.bucket.forEach(function(f){
+    var li=document.createElement('li'); li.className='row';
+    var ic=document.createElement('div'); ic.className='ic'; ic.appendChild(fishImg(f.sp,18,false,3));
+    var info=document.createElement('div'); info.innerHTML='<div class="nm">'+SP_BY_ID[f.sp].name.toUpperCase()+'</div><div class="sub">'+fmtWeightText(f.lb)+', '+f.inches+' in</div>';
+    var act=document.createElement('div'); act.innerHTML='<button class="pbtn gold" type="button" data-sell="'+f.uid+'">SELL $'+money(fishValue(f.sp,f.lb))+'</button>';
+    li.appendChild(ic); li.appendChild(info); li.appendChild(act); ul.appendChild(li);
+  });
+}
+function renderTrophies(){
+  var best=overallBest(), box=$('bestBox');
+  box.innerHTML='';
+  var wrap=document.createElement('div'); wrap.className='best';
+  var stand=document.createElement('div'); stand.className='stand';
+  stand.appendChild(best?fishImg(best.id,30,false,3):fishImg('largemouth',30,'#24406A',3));
+  var info=document.createElement('div');
+  info.innerHTML='<div class="lbl">PERSONAL BEST</div>'+(best?'<div class="w" style="margin-top:8px">'+fmtWeightText(best.lb).toUpperCase()+'</div><div class="t">'+SP_BY_ID[best.id].name+', '+best.inches+' in, after '+fmtDuration(best.min)+'</div>':'<div class="t">Nothing on the wall yet. Go catch something!</div>');
+  wrap.appendChild(stand); wrap.appendChild(info); box.appendChild(wrap);
+  var found=Object.keys(state.records).length;
+  $('stats').innerHTML='<div class="fact"><span class="k">CAUGHT</span><span class="v">'+state.total+'</span></div><div class="fact"><span class="k">ON THE ICE</span><span class="v">'+fmtDuration(state.fishedSec/60)+'</span></div><div class="fact"><span class="k">SPECIES</span><span class="v">'+found+' / '+SPECIES.length+'</span></div><div class="fact"><span class="k">EARNED</span><span class="v">$'+money(state.earned)+'</span></div>';
+  var grid=$('grid'); grid.innerHTML='';
+  SPECIES.forEach(function(sp){
+    var r=state.records[sp.id], c=document.createElement('div'); c.className='card'+(r?'':' no');
+    var pic=document.createElement('div'); pic.className='pic';
+    var L=Math.min(30,Math.round(14+16*Math.log(sp.max)/Math.log(150)));
+    var gh=fishCanvas(sp.id,L,true).height;
+    pic.appendChild(fishImg(sp.id,L,r?false:'#24406A',Math.max(2,Math.min(Math.floor(110/(L+2)),Math.floor(60/gh)))));
+    c.appendChild(pic);
+    var baitNames=BAITS.filter(function(b){return sp.baits[b.id]>=1;}).map(function(b){return b.name.toLowerCase();});
+    var nm=document.createElement('div'); nm.className='nm'; nm.textContent=r?sp.name.toUpperCase():'???';
+    var v=document.createElement('div'); v.className='v';
+    v.textContent=r?fmtWeightText(r.lb):'Try '+(baitNames[0]||'any bait');
+    c.appendChild(nm); c.appendChild(v); grid.appendChild(c);
+  });
+  $('recent').innerHTML=state.catches.length?state.catches.slice(0,8).map(function(c){
+    return '<li><span class="w">'+fmtWeightText(c.lb)+'</span><span>'+SP_BY_ID[c.sp].name+(c.practice?'<span class="tag">PRACTICE</span>':'')+'</span><span class="m">'+fmtDuration(c.min)+' wait</span></li>';
+  }).join(''):'<li><span class="m" style="grid-column:1/-1;text-align:left">No catches yet.</span></li>';
+}
+
+/* ================= SCENE ================= */
+var reduceMotion=false;
+try{ reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
+var game=$('game'), canvas=$('scene'), ctx=canvas.getContext('2d');
+var px=3, W=0, H=0, iceY=60, floorY=0, floorTarget=0, castAnim=0;
+var ICE_H=7, hudB=8;
+var REEL=1300, HAUL=800, CARD_AT=1950;
+var fx=null, parts=[], debris=[], cracks=[], shakeUntil=0, shakeAmp=0;
+function easeIO(k){ return k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; }
+function easeOutBack(k){ var c1=1.5,c3=c1+1; return 1+c3*Math.pow(k-1,3)+c1*Math.pow(k-1,2); }
+function heroLen(lb){ return Math.max(5,Math.round(11*Math.cbrt(lb))); }
+function startFx(last,skip){
+  var big=last.lb>=5, L=heroLen(last.lb);
+  L=big?Math.max(28,Math.min(Math.round(L*1.6),Math.round(iceY*1.1))):Math.min(L,24);
+  fx={start:performance.now()-(skip?REEL+HAUL+400:0),id:last.sp,lb:last.lb,big:big,L:L,spot:last.spot,breached:!!skip,sparked:!!skip,card:false,out:0};
+  parts=[]; if(skip){ debris=[]; makeCracks(big); }
+}
+function makeCracks(big){
+  cracks=[]; var n=big?4:2;
+  for(var s=-1;s<=1;s+=2) for(var i=0;i<n;i++){
+    var x=s*6, y=2+Math.floor(Math.random()*(ICE_H-3)), len=(big?14:5)+Math.random()*(big?26:8);
+    for(var k=0;k<len;k++){ x+=s; if(Math.random()<0.4) y+=Math.random()<0.5?-1:1; y=Math.max(1,Math.min(ICE_H-2,y)); cracks.push([x,y]);
+      if(Math.random()<0.12) cracks.push([x,Math.max(1,Math.min(ICE_H-2,y+(Math.random()<.5?-1:1)))]); }
+  }
+}
+function breach(big){
+  var hx=holeX(), n=big?84:34;
+  makeCracks(big);
+  for(var i=0;i<n;i++){
+    var ice=Math.random()<0.55;
+    parts.push({k:ice?'ice':'drop',x:hx+(Math.random()-0.5)*8,y:iceY+1,vx:(Math.random()-0.5)*(big?64:34),vy:-(18+Math.random()*(big?58:32)),g:75,
+      c:ice?['#F4F9FC','#BFE3F2','#9FD3F2'][i%3]:'#8ED0EE',sz:ice&&Math.random()<(big?0.45:0.25)?2:1,life:4});
+  }
+  if(!reduceMotion){ shakeUntil=performance.now()+(big?550:300); shakeAmp=big?2:1; }
+}
+function sparkle(x,y,L){
+  for(var i=0;i<28;i++) parts.push({k:'spark',x:x+(Math.random()-0.5)*18,y:y+Math.random()*L,vx:(Math.random()-0.5)*8,vy:(Math.random()-0.5)*8,g:0,c:i%3?'#FFC94A':'#FFFFFF',sz:1,life:0.6+Math.random()*1});
+}
+function drawHero(cs,x,y,th){
+  ctx.save(); ctx.translate(x+0.5,y); ctx.rotate(-Math.PI/2+th);
+  ctx.drawImage(cs,-(cs.width-2),-(Math.floor(cs.height/2)+1)); ctx.restore();
+}
+var CAB=["......RRRRRR....","......RwwwwR....","......RwwwwR....","..RRRRRRRRRRRRR.",".RRRRRRRRRRRRRRR",".rrrrrrrrrrrrrrr",".kkkkkkkkkkkkkk.","kKkKkKkKkKkKkKkk",".kkkkkkkkkkkkkk."];
+function drawCrane(cx,tx,ty,dk,ms){
+  var cabY=iceY-CAB.length, px0=cx+3, py0=cabY+3;
+  var dx=tx-px0, dy=ty-py0, len=Math.max(1,Math.sqrt(dx*dx+dy*dy)), nx=-dy/len, ny=dx/len;
+  var R=shade('#D93A3A',dk*0.6), r=shade('#8E2430',dk*0.6);
+  line(px0,py0,tx,ty,R);
+  line(Math.round(px0+nx*3),Math.round(py0+ny*3),Math.round(tx+nx),Math.round(ty+ny),R);
+  for(var k=2;k<len-1;k+=3){ var a=k/len, b=Math.min(1,(k+1.5)/len), w=3-2*b;
+    line(Math.round(px0+dx*a),Math.round(py0+dy*a),Math.round(px0+dx*b+nx*w),Math.round(py0+dy*b+ny*w),r); }
+  var anim=Math.floor(ms/110)%2;
+  drawSprite(ctx,CAB,{R:R,r:r,w:'#BFE3F2',k:'#1B1F2A',K:anim?'#6E7A8C':'#1B1F2A'},cx,cabY);
+  P(tx,ty,'#1B1F2A'); P(tx-1,ty,'#1B1F2A'); P(tx,ty+1,'#1B1F2A');
+}
+function layout(){
+  var r=game.getBoundingClientRect();
+  px=r.width<600?3:4;
+  W=Math.ceil(r.width/px); H=Math.ceil(r.height/px);
+  canvas.width=W; canvas.height=H; canvas.style.width=(W*px)+'px'; canvas.style.height=(H*px)+'px';
+  ctx.imageSmoothingEnabled=false;
+  measure(); floorY=floorTarget; fishes=[];
+  for(var i=0;i<3;i++) spawnFish(true);
+  draw(performance.now());
+}
+function measure(){
+  if(!W) return;
+  var g=game.getBoundingClientRect(), cb=$('center').getBoundingClientRect(), pb=$('panel').getBoundingClientRect();
+  iceY=Math.max(Math.round(H*0.22),Math.ceil((cb.bottom-g.top)/px)+24);
+  hudB=Math.ceil((document.querySelector('.hud').getBoundingClientRect().bottom-g.top)/px);
+  floorTarget=Math.floor((pb.top-g.top)/px)-2;
+  if(floorTarget<iceY+ICE_H+34) floorTarget=iceY+ICE_H+34;
+  if(!floorY) floorY=floorTarget;
+}
+function hexC(c){return [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];}
+function mixC(a,b,t){return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];}
+function rgb(c){return 'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';}
+var DARK=[2,6,16];
+function shade(hex,k){ return rgb(mixC(hexC(hex),DARK,k)); }
+var SKY=[[0,'#070E22','#142446'],[5,'#070E22','#142446'],[6.5,'#3E4A7A','#F0A67A'],[8,'#6FA9D8','#D2E8F2'],[16.5,'#6FA9D8','#D2E8F2'],[18,'#3A3566','#EE8A62'],[19.5,'#070E22','#142446'],[24,'#070E22','#142446']];
+function skyAt(h){
+  for(var i=0;i<SKY.length-1;i++){ var a=SKY[i],b=SKY[i+1];
+    if(h>=a[0]&&h<=b[0]){ var t=(h-a[0])/(b[0]-a[0]); return [mixC(hexC(a[1]),hexC(b[1]),t),mixC(hexC(a[2]),hexC(b[2]),t)]; } }
+  return [hexC(SKY[0][1]),hexC(SKY[0][2])];
+}
+function lightAt(h){ if(h>=8&&h<=16.5) return 1; if(h<=5||h>=19.5) return 0; return h<12?(h-5)/3:(19.5-h)/3; }
+var WATER={shallows:['#2F84A0','#134262'],weedline:['#2A6F86','#0F3150'],deep:['#1F5278','#061630']};
+function hookDepth(spot){ return {shallows:.42,weedline:.6,deep:.84}[spot]; }
+function holeX(){ return Math.round(W/2)+8; }
+function hookY(spot){ var top=iceY+ICE_H; return Math.round(top+(floorY-top)*hookDepth(spot)); }
+function sceneLen(id){ return Math.round(5+24*Math.log(SP_BY_ID[id].max)/Math.log(150)); }
+
+var fishes=[];
+function poolTarget(){ return state.line?Math.min(7,3+Math.floor(effMinutes(state.line,Date.now())/120)):3; }
+function spawnFish(initial){
+  var line=state.line, spot=line?line.spot:state.spot, bait=line?line.bait:state.bait;
+  var T=line?effMinutes(line,Date.now()):0;
+  var list=speciesWeights(spot,bait,T).filter(function(x){return x.w>0;});
+  if(!list.length) list=speciesWeights('shallows','worm',0).filter(function(x){return x.w>0;});
+  var tot=0; list.forEach(function(x){tot+=x.w;}); var r=Math.random()*tot, sp=list[0].sp;
+  for(var i=0;i<list.length;i++){ r-=list[i].w; if(r<=0){ sp=list[i].sp; break; } }
+  var L=sceneLen(sp.id), dir=Math.random()<.5?1:-1;
+  var top=iceY+ICE_H+5, bot=floorY-5, hy=hookY(spot);
+  var y=Math.max(top,Math.min(bot,hy+(Math.random()-0.5)*(bot-top)*0.9));
+  fishes.push({id:sp.id,L:L,x:initial?Math.random()*W:(dir>0?-L-4:W+4),y:y,dir:dir,v:(L>20?3:5)+Math.random()*4,ph:Math.random()*6});
+}
+function P(x,y,c){ ctx.fillStyle=c; ctx.fillRect(x,y,1,1); }
+function disc(cx,cy,r,c){ ctx.fillStyle=c; for(var y=-r;y<=r;y++){ var w=Math.floor(Math.sqrt(r*r-y*y)); ctx.fillRect(cx-w,cy+y,w*2+1,1);} }
+function line(x0,y0,x1,y1,c){ x0|=0;y0|=0;x1|=0;y1|=0; var dx=Math.abs(x1-x0),sx=x0<x1?1:-1,dy=-Math.abs(y1-y0),sy=y0<y1?1:-1,err=dx+dy;
+  ctx.fillStyle=c; for(var n=0;n<400;n++){ ctx.fillRect(x0,y0,1,1); if(x0===x1&&y0===y1) break; var e2=2*err; if(e2>=dy){err+=dy;x0+=sx;} if(e2<=dx){err+=dx;y0+=sy;} } }
+function hookBait(id,x,y){ var art=BAIT_ART[id]||BAIT_ART.worm; drawSprite(ctx,art.rows.slice(1,7).map(function(r){return r.slice(1,7);}),art.map,x,y); }
+
+var lastT=0;
+function draw(ms){
+  if(!W||!state) return;
+  var t=reduceMotion?0:ms/1000, dt=Math.min(0.1,Math.max(0,(ms-lastT)/1000)); lastT=ms;
+  floorY+=(floorTarget-floorY)*Math.min(1,dt*6); var fy=Math.round(floorY);
+  var d=new Date(), h=d.getHours()+d.getMinutes()/60, sky=skyAt(h), lt=lightAt(h), dk=(1-lt)*0.55;
+  var spot=state.line?state.line.spot:(fx?fx.spot:state.spot);
+  var hx=holeX(), waterTop=iceY+ICE_H, i, x, y, r;
+
+  for(y=0;y<=iceY;y++){ ctx.fillStyle=rgb(mixC(sky[0],sky[1],y/iceY)); ctx.fillRect(0,y,W,1); }
+  if(lt<0.6){ for(i=0;i<40;i++){ if(hash(i+3)*(1-lt)<0.25) continue; if(Math.sin(t*1.5+i*2)>-.6) P(Math.floor(hash(i*3.1)*W),Math.floor(hash(i*7.7+1)*iceY*0.75),i%5?'#BFD0F0':'#FFFFFF'); } }
+  var day=h>=6&&h<18, p=day?(h-6)/12:(((h<6)?h+24:h)-18)/12;
+  var sx=Math.round(W*(0.1+0.8*p)), sy=Math.round(iceY-14-Math.sin(Math.PI*p)*(iceY*0.62));
+  if(day){ disc(sx,sy,6,'#FFE9A8'); disc(sx,sy,4,'#FFF6D6'); }
+  else { disc(sx,sy,5,'#E4EAF6'); disc(sx+2,sy-1,4,rgb(mixC(sky[0],sky[1],Math.max(0,sy)/iceY))); }
+  var hill=shade('#D5E6F0',0.2+dk), pine=shade('#1E4A3E',0.25+dk*0.8), pineS=shade('#EAF4FA',0.15+dk);
+  for(x=0;x<W;x++){ var hy=iceY-4-Math.round(4*Math.sin(x*0.035+1)+3*Math.sin(x*0.09)); ctx.fillStyle=hill; ctx.fillRect(x,hy,1,iceY-hy); }
+  for(i=0;i<W/7;i++){
+    var bx=Math.round(i*7+hash(i)*5), ph=7+Math.round(hash(i+11)*9), base=iceY-2;
+    if(Math.abs(bx-hx)<26 && hash(i+5)<0.7) continue;
+    for(r=0;r<ph;r++){ var wdt=Math.floor(r/2.2)+1; ctx.fillStyle=pine; ctx.fillRect(bx-wdt+1,base-ph+r,wdt*2-1,1); if(r%3===1){ ctx.fillStyle=pineS; ctx.fillRect(bx-wdt+1,base-ph+r,Math.max(1,wdt-1),1);} }
+    ctx.fillStyle=shade('#3A2A20',0.3+dk); ctx.fillRect(bx,base,1,2);
+  }
+
+  var wc=WATER[spot]||WATER.shallows, wt=hexC(wc[0]), wb=hexC(wc[1]);
+  for(y=waterTop;y<H;y++){ var k=(y-waterTop)/Math.max(1,fy-waterTop); ctx.fillStyle=rgb(mixC(mixC(wt,wb,Math.min(1,k)),DARK,dk*0.9)); ctx.fillRect(0,y,W,1); }
+  if(lt>0.2){
+    ctx.fillStyle='rgba(220,240,255,'+(0.07*lt).toFixed(3)+')';
+    for(i=0;i<3;i++){ var sw=3+i*2, off=(i-1)*6; ctx.beginPath(); ctx.moveTo(hx-sw+off*0.2,waterTop); ctx.lineTo(hx+sw+off*0.2,waterTop); ctx.lineTo(hx+sw*3+off*3,fy); ctx.lineTo(hx-sw*3+off*3,fy); ctx.closePath(); ctx.fill(); }
+  }
+  var sed=shade('#2A3A3E',0.15+dk), sedHi=shade('#4A5A52',0.15+dk), rock=shade('#56606A',0.1+dk);
+  for(x=0;x<W;x++){ var fl=fy+Math.round(1.5*Math.sin(x*0.13)+Math.sin(x*0.41)); ctx.fillStyle=sedHi; ctx.fillRect(x,fl,1,1); ctx.fillStyle=sed; ctx.fillRect(x,fl+1,1,H-fl); }
+  for(i=0;i<W/18;i++){ disc(Math.round(hash(i*5.3)*W),fy+1,1+Math.round(hash(i*2.1)*2),rock); }
+  var wn={shallows:14,weedline:30,deep:5}[spot], wmax={shallows:16,weedline:Math.max(20,(fy-waterTop)*0.65),deep:10}[spot];
+  for(i=0;i<wn;i++){
+    var wx=Math.round(hash(i*9.7+(spot.length))*W), wh=Math.round(6+hash(i*4.4)*wmax), col=i%2?shade('#3F8A47',0.2+dk):shade('#2E6B3A',0.2+dk);
+    for(r=0;r<wh;r++){ var sway=Math.round(Math.sin(t*1.2+i+r*0.22)*(r/wh)*2.4); ctx.fillStyle=col; ctx.fillRect(wx+sway,fy-r,1,1); if(r%4===2) ctx.fillRect(wx+sway+(i%2?1:-1),fy-r,1,1); }
+  }
+  for(i=0;i<7;i++){ var bp=((t*0.12+hash(i))%1), byy=Math.round(fy-(fy-waterTop)*bp), bxx=Math.round(hash(i*3.7)*W+Math.sin(t*2+i)*1.5);
+    if(byy>waterTop+1) P(bxx,byy,'rgba(220,240,255,'+(0.5*(1-bp)+0.1).toFixed(2)+')'); }
+  var want=poolTarget();
+  if(fishes.length<want && Math.random()<dt*0.6) spawnFish(false);
+  ctx.globalAlpha=lt>0.3?0.5:0.38;
+  for(i=fishes.length-1;i>=0;i--){
+    var f=fishes[i]; f.x+=f.dir*f.v*dt*(0.7+0.3*Math.sin(t*0.9+f.ph)); f.y+=Math.sin(t*0.7+f.ph)*dt*0.8;
+    if(f.x<-f.L-8||f.x>W+8){ fishes.splice(i,1); continue; }
+    var spr=fishCanvas(f.id,f.L,true);
+    if(f.dir>0) ctx.drawImage(spr,Math.round(f.x),Math.round(f.y-spr.height/2));
+    else { ctx.save(); ctx.translate(Math.round(f.x)+spr.width,0); ctx.scale(-1,1); ctx.drawImage(spr,0,Math.round(f.y-spr.height/2)); ctx.restore(); }
+  }
+  ctx.globalAlpha=1;
+
+  // ---- catch animation state ----
+  var F=null;
+  if(fx){
+    var ft=ms-fx.start, cs=fishCanvas(fx.id,fx.L,false), pre=ft<REEL;
+    var hangY=fx.big?Math.max(hudB+3,iceY-Math.round(fx.L*0.8)):iceY-21;
+    var y0=hookY(fx.spot), hp, th;
+    if(pre){
+      hp=y0+(waterTop+2-y0)*easeIO(ft/REEL); th=Math.sin(ft/90)*0.08;
+      if(!reduceMotion && ft>REEL-500){ shakeUntil=Math.max(shakeUntil,ms+40); shakeAmp=Math.max(shakeAmp,0.6); }
+    }else{
+      var kh=Math.min(1,(ft-REEL)/HAUL); hp=(waterTop+2)+(hangY-(waterTop+2))*easeOutBack(kh);
+      var sec=(ft-REEL)/1000; th=(0.5*Math.exp(-sec/1.6)+0.05)*Math.sin(sec*3.2)*(fx.big?0.55:1);
+      if(!fx.breached){ fx.breached=true; breach(fx.big); }
+      if(!fx.sparked && kh>=1){ fx.sparked=true; if(state.last&&state.last.newBest) sparkle(hx,hangY,fx.L); }
+    }
+    if(fx.out){ var ko=Math.min(1,(ms-fx.out)/700); hp-=(hp+fx.L+30)*ko*ko; }
+    F={ft:ft,cs:cs,hook:Math.round(hp),th:th,pre:pre};
+    if(pre) drawHero(cs,hx,F.hook,th);
+  }
+
+  var gapL=hx-5, gapR=hx+5;
+  var snow=shade('#F4F9FC',dk*0.8), ice=shade('#BFE3F2',dk*0.8), ice2=shade('#A2D0E6',dk*0.8), iceLo=shade('#6FA6C2',dk*0.8);
+  for(x=0;x<W;x++){
+    if(x>=gapL&&x<=gapR) continue;
+    ctx.fillStyle=snow; ctx.fillRect(x,iceY,1,2);
+    ctx.fillStyle=ice; ctx.fillRect(x,iceY+2,1,ICE_H-3);
+    if(hash(x*1.7)<0.12){ ctx.fillStyle=ice2; ctx.fillRect(x,iceY+3,1,ICE_H-4); }
+    ctx.fillStyle=iceLo; ctx.fillRect(x,iceY+ICE_H-1,1,1);
+  }
+  ctx.fillStyle=snow; ctx.fillRect(gapL-3,iceY-1,3,1); ctx.fillRect(gapR+1,iceY-1,3,1); ctx.fillRect(gapL-2,iceY-2,1,1); ctx.fillRect(gapR+2,iceY-2,1,1);
+  ctx.fillStyle=shade(wc[0],dk); ctx.fillRect(gapL,iceY+2,gapR-gapL+1,ICE_H-2);
+  ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.fillRect(gapL+1,iceY+2,gapR-gapL-1,1);
+  ctx.fillStyle=shade('#3E6E8C',dk*0.7); cracks.forEach(function(c){ ctx.fillRect(hx+c[0],iceY+c[1],1,1); });
+  debris.forEach(function(d){ ctx.fillStyle=shade(d.c,dk*0.8); ctx.fillRect(hx+d.dx,d.y,d.sz,d.sz); });
+
+  // crane for trophy fish
+  var craneTip=null;
+  if(fx&&fx.big){
+    var tgt=hx+10, k1=Math.min(1,F.ft/1100), cx=W+2+(tgt-(W+2))*(1-Math.pow(1-k1,3));
+    if(fx.out){ var ko2=Math.max(0,(ms-fx.out-250)/900); cx=tgt+(W+40-tgt)*ko2*ko2; }
+    cx=Math.round(cx);
+    craneTip=[cx-10,Math.max(2,Math.max(hudB+3,iceY-Math.round(fx.L*0.8))-7)];
+    drawCrane(cx,craneTip[0],craneTip[1],dk,ms);
+  }
+
+  var hop=(F&&!F.pre&&!fx.out&&F.ft<REEL+HAUL+3500&&Math.floor(F.ft/170)%2)?1:0;
+  var fX=hx-21-(fx&&fx.big?Math.min(12,Math.max(0,Math.round(fishCanvas(fx.id,fx.L,false).height/2)-6)):0), fY=iceY-18-hop;
+  ctx.drawImage(fisherCanvas(state.outfit),fX,fY);
+  if(lt<0.5){
+    var g2=ctx.createRadialGradient(fX-3,iceY-3,0,fX-3,iceY-3,22); g2.addColorStop(0,'rgba(255,200,110,'+(0.35*(1-lt*2)).toFixed(2)+')'); g2.addColorStop(1,'rgba(255,200,110,0)');
+    ctx.fillStyle=g2; ctx.fillRect(fX-26,iceY-26,48,40);
+  }
+  drawSprite(ctx,[".k.","yYy","yYy","kkk"],{k:'#2A2A2A',y:'#C98A12',Y:'#FFE08A'},fX-4,iceY-4);
+  var line0=state.line, dip=0;
+  var onLine=line0&&hooked(line0);
+  if(onLine) dip=3+Math.round(Math.sin(t*24)*1.5);
+  var tipX=hx, tipY=iceY-15+dip;
+  if(F){
+    if(F.pre) tipY=iceY-13+Math.round(Math.sin(t*30));
+    else if(!fx.big) tipY=iceY-15-Math.round(9*Math.min(1,(F.ft-REEL)/HAUL))-hop;
+    else tipY=iceY-15-hop;
+  }
+  var handX=fX+11, handY=fY+9;
+  line(handX,handY,tipX,tipY,'#3B2A1E'); P(handX-1,handY+1,'#C0392B');
+  var hyHook=hookY(spot), castK=castAnim?Math.min(1,(ms-castAnim)/700):1;
+  if(F){
+    ctx.fillStyle='rgba(230,240,250,0.85)';
+    if(F.pre||!fx.big){ if(F.hook>tipY+1) ctx.fillRect(tipX,tipY+1,1,F.hook-tipY-1); }
+    else ctx.fillRect(tipX,tipY+1,1,4);
+    if(craneTip&&!F.pre){ line(craneTip[0],craneTip[1]+1,hx,F.hook-2,'#2A2E38'); drawSprite(ctx,["yYy",".y."],{y:'#C98A12',Y:'#FFE08A'},hx-1,F.hook-3); }
+    if(!F.pre) drawHero(F.cs,hx,F.hook,F.th);
+    if(!F.pre&&!fx.out&&Math.random()<dt*(fx.big?6:3)){
+      var tw=F.cs.width-2; parts.push({k:'drop',x:hx-tw*Math.sin(F.th),y:F.hook+tw*Math.cos(F.th),vx:0,vy:4,g:75,c:'#8ED0EE',sz:1,life:3});
+    }
+    if(fx.out&&ms-fx.out>(fx.big?1250:750)){ fx=null; setTimeout(renderAll,0); }
+  }else if(line0){
+    var curY=Math.round(iceY+(hyHook-iceY)*(reduceMotion?1:castK)), wob=Math.round(Math.sin(t*1.6)*0.6);
+    ctx.fillStyle='rgba(230,240,250,0.75)'; ctx.fillRect(tipX,tipY+1,1,curY-tipY-1);
+    if(onLine){
+      var hi=lineInfo(line0), hl=Math.min(40,heroLen(hi.roll.lb)), hs=fishCanvas(hi.roll.id,hl,'#020A16'), fl=Math.floor(t*3)%2;
+      ctx.globalAlpha=0.6; ctx.save(); ctx.translate(tipX+Math.round(Math.sin(t*9)*2),curY); if(fl) ctx.scale(-1,1);
+      ctx.drawImage(hs,-(hs.width-2),-(Math.floor(hs.height/2)+1)); ctx.restore(); ctx.globalAlpha=1;
+      if(Math.random()<dt*5) parts.push({k:'drop',x:hx+(Math.random()-0.5)*6,y:iceY+1,vx:(Math.random()-0.5)*14,vy:-(8+Math.random()*14),g:75,c:'#8ED0EE',sz:1,life:2});
+    }else{ hookBait(line0.bait,tipX-2+wob,curY); P(tipX,curY,'#C9CED6'); }
+  }else{
+    ctx.fillStyle='rgba(230,240,250,0.75)'; ctx.fillRect(tipX,tipY+1,1,5);
+    hookBait(state.bait,tipX-2,tipY+6);
+  }
+
+  // particles: ice chunks, splash, drips, sparkles
+  for(i=parts.length-1;i>=0;i--){
+    var q=parts[i]; q.life-=dt; q.vy+=q.g*dt; q.x+=q.vx*dt; q.y+=q.vy*dt;
+    var inHole=q.x>=hx-5&&q.x<=hx+5;
+    if(q.k==='ice'&&q.vy>0&&!inHole&&q.y>=iceY-q.sz&&q.y<iceY+5){ if(debris.length<220) debris.push({dx:Math.round(q.x)-hx,y:iceY-q.sz,c:q.c,sz:q.sz}); parts.splice(i,1); continue; }
+    if(q.k==='drop'&&q.vy>0&&q.y>=iceY-1&&(!inHole||q.y>iceY+3)){ parts.splice(i,1); continue; }
+    if(q.life<=0||q.y>H||q.x<-4||q.x>W+4){ parts.splice(i,1); continue; }
+    if(q.k==='spark'&&q.life<0.3&&Math.random()<0.5) continue;
+    ctx.fillStyle=q.k==='spark'&&Math.floor(q.life*10)%2?'#FFFFFF':q.c;
+    ctx.fillRect(Math.round(q.x),Math.round(q.y),q.sz,q.sz);
+  }
+  if(ms<shakeUntil){ canvas.style.transform='translate('+Math.round((Math.random()-.5)*2*shakeAmp)*px+'px,'+Math.round((Math.random()-.5)*2*shakeAmp)*px+'px)'; }
+  else if(shakeAmp){ shakeAmp=0; canvas.style.transform=''; }
+  for(i=0;i<36;i++){ var sxx=Math.floor((hash(i*2.3)*W+t*(3+hash(i)*4)+Math.sin(t+i)*3)%W), syy=Math.floor((hash(i*5.1)*iceY+t*(6+hash(i+2)*6))%iceY);
+    P((sxx+W)%W,syy,'rgba(255,255,255,'+(0.5+0.4*hash(i+9)).toFixed(2)+')'); }
+}
+var lastDraw=0;
+function loop(ms){ requestAnimationFrame(loop); if(ms-lastDraw<33) return; lastDraw=ms; draw(ms); }
+
+/* ================= WORLD LEADERBOARD ================= */
+/* Fill these in once the Supabase project exists. The key is the public (anon / publishable) key, which is safe to put in a web page. */
+var LEADERBOARD={url:'https://gbbdjgfxjtgsefgjgodf.supabase.co',key:'sb_publishable_LZ175Ns7gHU5CUD_Fdrf8Q_6iCEMEQH'};
+var BAD=['fuck','shit','bitch','cunt','nigg','fag','dick','pussy','cock','asshole','slut','whore','porn','sex','rape','nazi','hitler','penis','vagina','boob','tits','retard'];
+function nameProblem(n){
+  if(!/^[A-Za-z0-9_]{2,16}$/.test(n)) return 'Use 2 to 16 letters, numbers or _ (no spaces).';
+  var flat=n.toLowerCase().replace(/[_0-9]/g,function(c){ return {'0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','_':''}[c]||''; });
+  for(var i=0;i<BAD.length;i++) if(flat.indexOf(BAD[i])>=0||n.toLowerCase().indexOf(BAD[i])>=0) return 'Pick a different name. Keep it friendly!';
+  return '';
+}
+function lbReady(){ return !!(LEADERBOARD.url&&LEADERBOARD.key)&&!inFrame(); }
+function lbHeaders(h){ h.apikey=LEADERBOARD.key; if(/^eyJ/.test(LEADERBOARD.key)) h.Authorization='Bearer '+LEADERBOARD.key; return h; }
+var lbBusy=false;
+function lbConsider(){
+  if(!state.username) return;
+  var best=overallBest(); if(!best) return;
+  if(best.lb<=(state.lbPosted||0)) return;
+  if(state.lbPending&&state.lbPending.lb>=best.lb){ lbFlush(); return; }
+  state.lbPending={species:best.id,lb:best.lb,inches:best.inches,bait:best.bait||null,spot:best.spot||null}; save(); lbFlush();
+}
+async function lbFlush(){
+  var p=state.lbPending; if(!p||!lbReady()||lbBusy||!state.username) return;
+  lbBusy=true;
+  try{
+    var r=await fetch(LEADERBOARD.url.replace(/\/$/,'')+'/rest/v1/catches',{method:'POST',headers:lbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body:JSON.stringify({name:state.username,tag:state.tag,species:p.species,lb:p.lb,inches:p.inches,bait:p.bait,spot:p.spot})});
+    if(r.ok){ state.lbPosted=p.lb; state.lbPending=null; save();
+      toast('Your '+fmtWeightText(p.lb)+' '+SP_BY_ID[p.species].name.toLowerCase()+' is on the world leaderboard!',3200,true); }
+  }catch(e){}
+  lbBusy=false;
+}
+var lbSeq=0;
+async function renderBoard(){
+  var sel=$('lbSpecies');
+  if(!sel.options.length){ sel.innerHTML='<option value="">All fish</option>'+SPECIES.map(function(sp){return '<option value="'+sp.id+'">'+sp.name+'</option>';}).join(''); }
+  $('lbMe').innerHTML=state.username?'Playing as <span style="color:var(--gold)">'+state.username+'</span><span style="color:var(--muted)">#'+state.tag+'</span>':'No username yet';
+  var ul=$('lbList');
+  if(!lbReady()){
+    ul.innerHTML='<li class="gap" style="padding:18px 6px">'+(inFrame()?"The world leaderboard works on the game's own website, not inside Claude.":"The world leaderboard isn't connected yet. It turns on once its database is set up.")+'</li>';
+    return;
+  }
+  var seq=++lbSeq, species=sel.value;
+  ul.innerHTML='<li class="gap" style="padding:18px 6px">Loading the leaderboard...</li>';
+  try{
+    var q='select=name,tag,species,lb,inches,created_at&order=lb.desc&limit=400'+(species?'&species=eq.'+encodeURIComponent(species):'');
+    var r=await fetch(LEADERBOARD.url.replace(/\/$/,'')+'/rest/v1/catches?'+q,{headers:lbHeaders({})});
+    if(!r.ok) throw new Error('bad');
+    var rows=await r.json(); if(seq!==lbSeq) return;
+    var seen={}, list=[];
+    rows.forEach(function(x){ var k=x.name+'#'+x.tag; if(!seen[k]&&SP_BY_ID[x.species]){ seen[k]=1; list.push(x); } });
+    if(!list.length){ ul.innerHTML='<li class="gap" style="padding:18px 6px">No fish here yet. Be the first!</li>'; return; }
+    var meKey=state.username+'#'+state.tag, meIdx=-1;
+    list.forEach(function(x,i){ if(x.name+'#'+x.tag===meKey&&meIdx<0) meIdx=i; });
+    ul.innerHTML='';
+    function row(x,i){
+      var li=document.createElement('li'); if(x.name+'#'+x.tag===meKey) li.className='me';
+      var rk=document.createElement('span'); rk.className='rk'; rk.textContent='#'+(i+1);
+      var ic=document.createElement('span'); ic.className='ic'; ic.appendChild(fishImg(x.species,13,false,3));
+      var who=document.createElement('span'); who.className='who';
+      var nm=document.createElement('div'); nm.className='nm'; nm.textContent=x.name; var tg=document.createElement('small'); tg.textContent=' #'+x.tag+(li.className?'  (you)':''); nm.appendChild(tg);
+      var sp=document.createElement('div'); sp.className='sp'; var bw=document.createElement('b'); bw.textContent=fmtWeightText(+x.lb); sp.appendChild(bw); sp.appendChild(document.createTextNode('  '+SP_BY_ID[x.species].name+', '+x.inches+' in'));
+      who.appendChild(nm); who.appendChild(sp);
+      li.appendChild(rk); li.appendChild(ic); li.appendChild(who); ul.appendChild(li);
+    }
+    list.slice(0,25).forEach(row);
+    if(meIdx>=25){ var g=document.createElement('li'); g.className='gap'; g.textContent='...'; ul.appendChild(g); row(list[meIdx],meIdx); }
+  }catch(e){
+    if(seq===lbSeq) ul.innerHTML='<li class="gap" style="padding:18px 6px">Couldn\'t reach the leaderboard. Check your internet and try again.</li>';
+  }
+}
+function openName(first){
+  $('nameInput').value=state.username||''; $('nameErr').textContent='';
+  $('nameTitle').textContent=first?'WELCOME TO BELOW ZERO':'CHANGE USERNAME';
+  $('nameGo').textContent=first?'START FISHING':'SAVE NAME';
+  $('nameClose').hidden=first;
+  $('nameOv').hidden=false;
+  setTimeout(function(){ try{ $('nameInput').focus(); }catch(e){} },50);
+}
+function saveName(e){
+  if(e) e.preventDefault();
+  var n=$('nameInput').value.trim(), prob=nameProblem(n);
+  if(prob){ $('nameErr').textContent=prob; return; }
+  var changed=state.username&&state.username!==n;
+  if(!state.tag) state.tag=String(1000+Math.floor(Math.random()*9000));
+  state.username=n;
+  if(changed){ state.lbPosted=0; state.lbPending=null; }
+  save(); $('nameOv').hidden=true;
+  lbConsider();
+  if(!$('boardOv').hidden) renderBoard();
+  toast(changed?'Name changed to '+n+'#'+state.tag+'.':'Welcome, '+n+'#'+state.tag+'! Grab your worms.',2600,true);
+}
+
+/* ================= FISH ALERT ================= */
+var pipWin=null, alertedSeed=null, miniKey='';
+function inFrame(){ try{ return window.self!==window.top; }catch(e){ return true; } }
+function canPip(){ return 'documentPictureInPicture' in window && !inFrame(); }
+function canNotify(){ return 'Notification' in window; }
+function desktop(){ try{ return window.matchMedia('(pointer:fine)').matches; }catch(e){ return true; } }
+function notifyActive(){ return !!state.notify && canNotify() && Notification.permission==='granted'; }
+function renderAlertBtn(){
+  var b=$('alertBtn'); b.hidden=!desktop();
+  var on=!!pipWin||notifyActive();
+  b.classList.toggle('on',on); b.textContent=pipWin?'ALERT OPEN':on?'ALERT ON':'FISH ALERT';
+}
+var fishIconURL=null;
+function fishIcon(){
+  if(fishIconURL) return fishIconURL;
+  try{ var src=fishCanvas('largemouth',22,false), c=document.createElement('canvas'); c.width=96; c.height=96;
+    var x=c.getContext('2d'); x.imageSmoothingEnabled=false; x.fillStyle='#0A1530'; x.fillRect(0,0,96,96);
+    var sc=Math.floor(88/src.width); x.drawImage(src,Math.round((96-src.width*sc)/2),Math.round((96-src.height*sc)/2),src.width*sc,src.height*sc);
+    fishIconURL=c.toDataURL('image/png'); }catch(e){ fishIconURL=''; }
+  return fishIconURL;
+}
+var MINI_CSS="html,body{margin:0;height:100%;background:#0A1530;color:#EAF5FF;font:18px/1.1 'VT323',ui-monospace,monospace;overflow:hidden}"+
+ "*{box-sizing:border-box}.m{height:100%;display:grid;grid-template-rows:auto 1fr auto auto;gap:4px;padding:8px 10px;border:3px solid #050B1C}"+
+ ".top{display:flex;justify-content:space-between;font:8px/1.3 'Press Start 2P',monospace;color:#93B2D2}.top b{color:#FFC94A;font-weight:400}"+
+ ".mid{display:grid;place-items:center;min-height:0}canvas{image-rendering:pixelated;max-width:100%;max-height:100%}"+
+ ".ms{font:13px/1.2 'Press Start 2P',monospace;text-align:center;font-variant-numeric:tabular-nums}.mx{text-align:center;color:#93B2D2}"+
+ ".on{background:#1D3866;animation:fl .7s steps(2) infinite}.on .ms{color:#FFC94A}.on .mx{color:#EAF5FF}"+
+ ".jump{animation:jp .5s steps(3) infinite alternate}.bob{animation:bb 2s steps(4) infinite alternate}"+
+ "@keyframes fl{50%{background:#0A1530}}@keyframes jp{to{transform:translateY(-10px) rotate(-12deg)}}@keyframes bb{to{transform:translateY(3px)}}";
+function buildMini(w){
+  var d=w.document; d.title='Below Zero';
+  var l=d.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap'; d.head.appendChild(l);
+  var st=d.createElement('style'); st.textContent=MINI_CSS; d.head.appendChild(st);
+  d.body.innerHTML='<div class="m" id="m"><div class="top"><span>BELOW <b>ZERO</b></span><span id="mt"></span></div><div class="mid"><canvas id="mf"></canvas></div><div class="ms" id="ms"></div><div class="mx" id="mx"></div></div>';
+  miniKey='';
+}
+function renderMini(){
+  if(!pipWin||pipWin.closed) return;
+  var d=pipWin.document, m=d.getElementById('m'); if(!m) return;
+  var line=state.line, on=!!(line&&hooked(line)), catching=!!(fx&&!fx.out);
+  var mode=catching?'catch':on?'on':line?'wait':'none';
+  d.getElementById('mt').textContent=line?BAIT_BY_ID[line.bait].name.toUpperCase():'';
+  if(mode!==miniKey){
+    miniKey=mode; m.classList.toggle('on',mode==='on');
+    var cv=d.getElementById('mf'), src=fishCanvas(catching&&state.last?state.last.sp:'largemouth',22,mode==='on'||mode==='catch'?false:'#2C5088');
+    cv.width=src.width; cv.height=src.height; var x=cv.getContext('2d'); x.clearRect(0,0,cv.width,cv.height); x.drawImage(src,0,0);
+    cv.style.width=(src.width*4)+'px'; cv.style.height=(src.height*4)+'px';
+    cv.className=mode==='on'?'jump':mode==='wait'?'bob':'';
+  }
+  var ms=d.getElementById('ms'), mx=d.getElementById('mx');
+  if(mode==='catch'){ ms.textContent='NICE CATCH!'; mx.textContent='Check the game tab'; }
+  else if(mode==='on'){ ms.textContent='FISH ON!'; mx.textContent='Go reel it in!'; }
+  else if(mode==='wait'){ ms.textContent=fmtClock(effMinutes(line,Date.now())*60); mx.textContent='Waiting for a bite...'; }
+  else { ms.textContent='NO LINE OUT'; mx.textContent='Cast in the game tab'; }
+}
+function checkBiteAlert(){
+  var line=state.line;
+  if(!line||!hooked(line)||alertedSeed===line.seed) return;
+  alertedSeed=line.seed;
+  if(!document.hidden||pipWin||!notifyActive()) return;
+  try{ var n=new Notification('FISH ON! | Below Zero',{body:'Something bit your '+BAIT_BY_ID[line.bait].name.toLowerCase()+' at the '+SPOT_BY_ID[line.spot].name+'. Go reel it in!',icon:fishIcon(),silent:true,tag:'slowbite-bite'});
+    n.onclick=function(){ try{ window.focus(); }catch(e){} n.close(); }; }catch(e){}
+}
+async function openAlert(){
+  if(pipWin){ try{ pipWin.close(); }catch(e){} pipWin=null; renderAlertBtn(); return; }
+  if(notifyActive()){ state.notify=false; save(); renderAlertBtn(); toast('Fish alert pop-ups are off.',2200); return; }
+  if(inFrame()){ toast("Fish alerts only work on the game's own website, not inside Claude.",4500); return; }
+  if(canPip()){
+    try{
+      pipWin=await window.documentPictureInPicture.requestWindow({width:260,height:180});
+      buildMini(pipWin); renderMini();
+      pipWin.setInterval(renderMini,1000);
+      pipWin.addEventListener('pagehide',function(){ pipWin=null; renderAlertBtn(); });
+      renderAlertBtn(); toast('Fish alert window is open. Drag it anywhere. It stays on top of your other apps.',4000,true);
+      return;
+    }catch(e){}
+  }
+  if(canNotify()){
+    try{
+      var perm=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+      if(perm==='granted'){ state.notify=true; save(); renderAlertBtn(); toast('Fish alerts are on. You will get a silent pop-up when something bites.',4000,true); return; }
+    }catch(e){}
+    toast('Your browser blocked notifications. Allow them for this site, then try again.',4500); return;
+  }
+  toast("This browser can't show fish alerts. Try Chrome or Edge on a computer.",4500);
+}
+
+/* ================= START ================= */
+var started=false;
+function start(data){
+  if(started) return; started=true;
+  state=(data&&data.v===1)?upgrade(data):(load()||freshState());
+  try{ if(window.claude&&window.claude.hot&&window.claude.hot.snapshot) window.claude.hot.snapshot(function(){return state;}); }catch(e){}
+
+  $('spots').addEventListener('click',function(e){ var b=e.target.closest('[data-spot]'); if(!b||b.disabled) return;
+    if(busyLine()){ toast('Reel in first to change spots.'); return; }
+    state.spot=b.dataset.spot; save(); renderAll(); });
+  $('baits').addEventListener('click',function(e){ var b=e.target.closest('[data-bait]'); if(!b) return;
+    if(!owns(b.dataset.bait)){ openOv('baitOv'); return; }
+    if(busyLine()){ toast('Reel in first to change bait.'); return; }
+    state.bait=b.dataset.bait; save(); renderAll(); });
+  $('loadout').addEventListener('click',function(){ openOv('tackleOv'); });
+  $('tackleDone').addEventListener('click',closeAll);
+  $('practice').addEventListener('change',function(e){ if(busyLine()){ e.target.checked=state.practice; return; } state.practice=e.target.checked; fixSelection(); save(); renderAll(); });
+  $('go').addEventListener('click',function(){
+    if(fx&&!fx.out) return;
+    if(!state.line){ cast(); return; }
+    var now=Date.now();
+    if(!hooked(state.line,now) && effMinutes(state.line,now)>=10 && now>armedUntil){ armedUntil=now+3500; tick(); setTimeout(tick,3600); return; }
+    reelIn();
+  });
+  $('keep').addEventListener('click',endFx);
+  $('sellNow').addEventListener('click',function(){ var got=sellUids([state.last.uid]); endFx(); if(got) toast('Sold for $'+money(got)+'!',2000,true); });
+  $('openMenu').addEventListener('click',function(){ openOv('menuOv'); });
+  $('alertBtn').addEventListener('click',openAlert);
+  $('nameForm').addEventListener('submit',saveName);
+  $('nameClose').addEventListener('click',function(){ $('nameOv').hidden=true; });
+  $('lbRename').addEventListener('click',function(){ openName(false); });
+  $('lbSpecies').addEventListener('change',renderBoard);
+  try{ if(!inFrame()){ var fi=document.createElement('link'); fi.rel='icon'; fi.href=fishIcon(); document.head.appendChild(fi); } }catch(e){}
+  renderAlertBtn();
+  if(state.line&&hooked(state.line)) alertedSeed=state.line.seed;
+  $('menuList').addEventListener('click',function(e){ var b=e.target.closest('[data-go]'); if(b) openOv(b.dataset.go); });
+  document.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click',closeAll); });
+  document.querySelectorAll('[data-back]').forEach(function(b){ b.addEventListener('click',function(){ openOv('menuOv'); }); });
+  OVERLAYS.forEach(function(id){ $(id).addEventListener('click',function(e){ if(e.target===$(id)) closeAll(); }); });
+  $('baitList').addEventListener('click',function(e){
+    var b=e.target.closest('[data-buy]'); if(b){ buyBait(b.dataset.buy); return; }
+    var u=e.target.closest('[data-use]'); if(u){ state.bait=u.dataset.use; save(); renderBaitShop(); renderAll(); }
+  });
+  $('shopTabs').addEventListener('click',function(e){ var b=e.target.closest('[data-tab]'); if(!b) return; shopTab=b.dataset.tab; shopPreview=null; renderShop(); });
+  $('shopItems').addEventListener('click',function(e){ var b=e.target.closest('[data-item]'); if(!b) return;
+    var it=ITEM_BY_ID[b.dataset.item];
+    if(state.ownedItems.indexOf(it.id)>=0){ state.outfit[it.slot]=it.id; shopPreview=null; save(); }
+    else shopPreview=it.id;
+    renderShop(); });
+  $('shopAction').addEventListener('click',shopAct);
+  $('bucketList').addEventListener('click',function(e){ var b=e.target.closest('[data-sell]'); if(!b) return; var got=sellUids([+b.dataset.sell]); renderBucket(); if(got) toast('+$'+money(got),1400,true); });
+  $('sellAll').addEventListener('click',function(){ var got=sellUids(state.bucket.map(function(f){return f.uid;})); renderBucket(); if(got) toast('Sold everything for $'+money(got)+'!',2200,true); });
+  $('reset').addEventListener('click',function(){ $('reset').hidden=true; $('resetAsk').hidden=false; });
+  $('resetNo').addEventListener('click',function(){ $('resetAsk').hidden=true; $('reset').hidden=false; });
+  $('resetYes').addEventListener('click',function(){ state=freshState(); armedUntil=0; fx=null; parts=[]; debris=[]; cracks=[]; fishes=[]; save(); closeAll(); toast('Fresh start. Grab your worms!',2400,true); });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){ if(!$('nameOv').hidden){ if(state.username) $('nameOv').hidden=true; return; } if(anyOpen()) closeAll(); else if(fx&&fx.card&&!fx.out) endFx(); return; }
+    if((e.key===' '||e.code==='Space') && (document.activeElement===document.body||!document.activeElement) && !anyOpen() && !(fx&&!fx.out)){ e.preventDefault(); $('go').click(); }
+  });
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden){ renderSonar(); tick(); } });
+
+  renderAll(); save();
+  layout();
+  if(window.ResizeObserver) new ResizeObserver(function(){ layout(); }).observe(game); else window.addEventListener('resize',layout);
+  setInterval(tick,250);
+  if(reduceMotion) setInterval(function(){ draw(performance.now()); },1000); else requestAnimationFrame(loop);
+  if(state.last && state.last.seen===false){ startFx(state.last,true); showCard(); }
+  if(!state.username) openName(true); else lbConsider();
+  window.addEventListener('online',lbFlush);
+}
+try{
+  if(window.claude&&window.claude.hot&&window.claude.hot.ready) window.claude.hot.ready(start);
+  else start((window.claude&&window.claude.hot&&window.claude.hot.data)||{});
+}catch(e){ start({}); }
+})();
+</script>
+
+</body>
+</html>
